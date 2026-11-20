@@ -70,6 +70,8 @@ WcwSnapJump/
 │   ├── WcwSnapJump_Documentation_EN.pdf
 │   ├── WcwSnapJump_Documentation.pdf
 │   └── images/
+├── Samples/                            # Optional Title Override sample plugin (archived)
+│   └── WcwSnapJumpCityTest_Plugin.zip
 ├── README.md                           # Bilingual repository documentation (EN / JA)
 └── Source/
     ├── WcwSnapJump/                    # Runtime module (Windows, Console & Packaged)
@@ -153,6 +155,11 @@ Subclass `UWcwSnapJumpHandler` (in C++ or Blueprint) and assign it under `Projec
 * **`HandleSameLevelTeleport` / `HandlePostJumpSetup`**: Apply event flags and trigger cutscene playback at the recorded timestamp right after teleportation or map load completion.
 
 *(See [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf) or the C++ implementation block in the Japanese section below for complete `UMyTitleSnapJumpHandler` code examples.)*
+
+#### Tutorial / Sample Plugin (Built for UE 5.8 `CitySample`)
+
+* **Archive**: [`Samples/WcwSnapJumpCityTest_Plugin.zip`](Samples/WcwSnapJumpCityTest_Plugin.zip)
+* Designed specifically to test and learn Title Override workflows inside Epic Games' **Unreal Engine 5.8 `CitySample`** (`Plugins/WcwSnapJumpCityTest/`). Demonstrates custom GPU pass injection, `[X] Fly` vs `Walking` mode restoration, Sun angle (Time-of-Day) & scalability CVar (`USTRUCT` JSON) restoration, and `UWorldPartitionSubsystem` streaming-complete wait with camera fade. *(Uses standard Engine C++ APIs only, so its code can also be reused as a template in any project.)*
 
 ## 日本語
 
@@ -282,6 +289,10 @@ void UMyTitleSnapJumpHandler::HandlePostJumpSetup_Implementation(
 * **Blueprint での Override**: `WcwSnapJumpHandler` を親とする Blueprint クラスを作成し、`On Gather Title Custom Meta` / `Handle Level Transition` / `Handle Post Jump Setup` をオーバーライドして `CustomJumpHandlerClass` に設定します。
 * **Subsystem デリゲート直接登録**: サブクラスを作らず `SnapSys->OnNativeGatherSnap().AddLambda(...)` や `SnapSys->OnNativeJumpOverride().BindLambda(...)` でフックすることも可能です。
 * **独自 `USTRUCT` の埋め込み**: `FJsonObjectConverter::UStructToJsonObjectString` で `InOutSnapData.CustomJsonPayload` に格納し、ジャンプ後に復元できます。
+#### チュートリアル／サンプルプラグイン（UE 5.8 `CitySample` 向け）
+
+* **同梱ZIP**: [`Samples/WcwSnapJumpCityTest_Plugin.zip`](Samples/WcwSnapJumpCityTest_Plugin.zip)
+* Epic Games 配布の **UE 5.8『CitySample』** に追加配置（`CitySample/Plugins/WcwSnapJumpCityTest/`）してタイトル側 Override の一通りの実装を体験・検証するための公式サンプルプラグインです。独自GPUパス注入、`[X] Fly` 飛行／徒歩モード復元、太陽ライト角度（時間帯）や描画CVar構造体（`USTRUCT` JSON）の保存・復元、`UWorldPartitionSubsystem` ストリーミング完了待ち＋カメラフェードを収録しています（エンジン標準APIのみで記述しているため、他プロジェクトへのコード流用も可能です）。
 
 ## License / ライセンス
 
