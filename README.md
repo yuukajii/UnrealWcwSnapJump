@@ -18,8 +18,8 @@
 
 For QA bug reporting and performance profiling, exchanging a single PNG from `Saved/WcwSnapJump/` immediately shows which hardware recorded the spike and lets any team member jump straight to that exact location and game state.
 
-* **PDF Manual (English)**: [`Doc/WcwSnapJump_Documentation_Beta_EN.pdf`](Doc/WcwSnapJump_Documentation_Beta_EN.pdf)
-* **PDF Manual (Japanese)**: [`Doc/WcwSnapJump_Documentation_Beta.pdf`](Doc/WcwSnapJump_Documentation_Beta.pdf)
+* **PDF Manual (English)**: [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf)
+* **PDF Manual (Japanese)**: [`Doc/WcwSnapJump_Documentation.pdf`](Doc/WcwSnapJump_Documentation.pdf)
 
 ### Demonstration Videos (YouTube — Captured in UE 5.8 `CitySample`)
 
@@ -67,8 +67,8 @@ WcwSnapJump/
 ├── WcwSnapJump.uplugin                 # Plugin descriptor (v0.1.0 Beta / Runtime + Editor)
 ├── LICENSE                             # MIT License
 ├── Doc/                                # PDF manuals (EN/JA) & README screenshots
-│   ├── WcwSnapJump_Documentation_Beta_EN.pdf
-│   ├── WcwSnapJump_Documentation_Beta.pdf
+│   ├── WcwSnapJump_Documentation_EN.pdf
+│   ├── WcwSnapJump_Documentation.pdf
 │   └── images/
 ├── README.md                           # Bilingual repository documentation (EN / JA)
 └── Source/
@@ -152,7 +152,7 @@ Subclass `UWcwSnapJumpHandler` (in C++ or Blueprint) and assign it under `Projec
 * **`ShouldTransitionLevel` / `HandleLevelTransition`**: Route map loads through your custom fade & async stage loader. Set `bAutoApplyOnEnginePostLoadMap = false` in your handler constructor and call `UWcwSnapJumpLibrary::NotifyWcwLevelLoadCompleted(WorldContext)` once async sublevels and the PlayerPawn are ready.
 * **`HandleSameLevelTeleport` / `HandlePostJumpSetup`**: Apply event flags and trigger cutscene playback at the recorded timestamp right after teleportation or map load completion.
 
-*(See [`Doc/WcwSnapJump_Documentation_Beta_EN.pdf`](Doc/WcwSnapJump_Documentation_Beta_EN.pdf) or the C++ implementation block in the Japanese section below for complete `UMyTitleSnapJumpHandler` code examples.)*
+*(See [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf) or the C++ implementation block in the Japanese section below for complete `UMyTitleSnapJumpHandler` code examples.)*
 
 ## 日本語
 
@@ -166,8 +166,8 @@ Subclass `UWcwSnapJumpHandler` (in C++ or Blueprint) and assign it under `Projec
 
 QAチームからのバグ報告や開発中の負荷共有において、「`Saved/WcwSnapJump/` のPNG画像1枚を受け渡すだけで、どの実機／GPU環境で撮られた負荷なのか一目で分かり、誰の環境でもその場所・そのイベント状態へ即ジャンプして再現できる」ワークフローを提供します。
 
-* **PDFマニュアル（日本語版）**: [`Doc/WcwSnapJump_Documentation_Beta.pdf`](Doc/WcwSnapJump_Documentation_Beta.pdf)
-* **PDFマニュアル（英語版）**: [`Doc/WcwSnapJump_Documentation_Beta_EN.pdf`](Doc/WcwSnapJump_Documentation_Beta_EN.pdf)
+* **PDFマニュアル（日本語版）**: [`Doc/WcwSnapJump_Documentation.pdf`](Doc/WcwSnapJump_Documentation.pdf)
+* **PDFマニュアル（英語版）**: [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf)
 
 ### デモンストレーション動画（YouTube・UE 5.8 `CitySample` 実機収録）
 
