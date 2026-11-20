@@ -1,0 +1,21 @@
+# Unreal Engine Plugin build & intermediate artifacts
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+
+# IDE & Visual Studio / Rider files
+.vs/
+.vscode/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# OS metadata files
+.DS_Store
+Thumbs.db
+Desktop.ini

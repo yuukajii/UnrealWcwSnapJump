@@ -1,0 +1,29 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Wcw Snap Jump",
+	"Description": "Visual scene snapshot & instant jump debug system. Embeds transform, level, stats, GPU load, and custom game/event/cutscene state into 512x512 PNG screenshots for QA sharing, Editor inspection, and Runtime/Console jump.",
+	"Category": "Extension",
+	"CreatedBy": "WinterCrownWORKS",
+	"CreatedByURL": "https://winter-crown-works.com",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "WcwSnapJump",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "WcwSnapJumpEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}
