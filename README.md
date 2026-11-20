@@ -16,7 +16,7 @@
 
 `WcwSnapJump` is an Unreal Engine C++ and Blueprint plugin that embeds **world coordinates, active levels, capture platform & GPU hardware info, frame telemetry (Stat Unit / GPU Top 10 / Memory), and custom title event or cutscene states** directly inside a lightweight PNG file (via a custom `WcwSnapJump` `tEXt` chunk right after `IHDR`). It enables thumbnail browsing and one-click / one-button scene teleportation across **Unreal Editor, PIE, and packaged console/PC builds**.
 
-For QA bug reporting and performance profiling, exchanging a single PNG from `Saved/WcwSnapJump/` immediately shows which hardware recorded the spike and lets any team member jump straight to that exact location and game state.
+For QA bug reporting and performance profiling, simply sharing the captured snapshot files (`.png` / `.json`) from `Saved/WcwSnapJump/` immediately shows which hardware recorded the spike and lets any team member jump straight to that exact location and game state.
 
 * **PDF Manual (English)**: [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf)
 * **PDF Manual (Japanese)**: [`Doc/WcwSnapJump_Documentation.pdf`](Doc/WcwSnapJump_Documentation.pdf)
@@ -101,7 +101,7 @@ Run the console command or Blueprint node during PIE, Standalone, or on a Consol
 
 #### 3. Sharing Snapshots Across Team Members (`Saved/WcwSnapJump` Exchange)
 
-1. **Reporter (Sender)**: Share the captured **`.png` file** (alone or paired with `.json`) from `<Project>/Saved/WcwSnapJump/` via Slack, Teams, or Jira.
+1. **Reporter (Sender)**: Share the captured **`.png` and `.json` pair** (or zipped folder) from `<Project>/Saved/WcwSnapJump/` via Slack, Teams, or Jira *(direct file copies work from `.png` alone, while pairing with `.json` also protects against chat image re-compression stripping PNG chunks)*.
 2. **Investigator (Receiver)**: Drop the received `.png` file into your local **`<Project>/Saved/WcwSnapJump/`** folder.
 3. **Instant Repro**: Click **`Refresh Snapshot List`** in `Wcw SnapJump Viewer` (Editor) or **`Refresh`** in the runtime menu (in-game) to inspect the reporter's GPU/hardware stats and jump straight to the location (`Wcw.SnapJump.JumpFile <File.png>` also jumps directly).
 
@@ -171,7 +171,7 @@ Subclass `UWcwSnapJumpHandler` (in C++ or Blueprint) and assign it under `Projec
 
 `WcwSnapJump` は、プレイ中の軽量スクリーンショット（PNGファイル自体）に **座標・カレントレベル・撮影プラットフォーム＆GPU／ハードウェア環境情報・フレーム負荷（Stat / GPU Top 10 / メモリ）・タイトル固有のイベント進捗度やカットシーン再生情報** を直接バイナリ埋め込み（PNG `tEXt` チャンク）し、**Editor・PIE・コンソール実機（パッケージビルド）のすべてでサムネイル一覧表示とワンクリック／ワンボタンでのシーンジャンプ＆状態再現**を実現する Unreal Engine C++ / Blueprint プラグインです。
 
-QAチームからのバグ報告や開発中の負荷共有において、「`Saved/WcwSnapJump/` のPNG画像1枚を受け渡すだけで、どの実機／GPU環境で撮られた負荷なのか一目で分かり、誰の環境でもその場所・そのイベント状態へ即ジャンプして再現できる」ワークフローを提供します。
+QAチームからのバグ報告や開発中の負荷共有において、「`Saved/WcwSnapJump/` に出力されたスナップショット（`.png` / `.json`）を受け渡すだけで、どの実機／GPU環境で撮られた負荷なのか一目で分かり、誰の環境でもその場所・そのイベント状態へ即ジャンプして再現できる」ワークフローを提供します。
 
 * **PDFマニュアル（日本語版）**: [`Doc/WcwSnapJump_Documentation.pdf`](Doc/WcwSnapJump_Documentation.pdf)
 * **PDFマニュアル（英語版）**: [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf)
@@ -209,7 +209,7 @@ QAチームからのバグ報告や開発中の負荷共有において、「`Sa
    * **`.png` ファイル（必須・単体完結）**: 軽量PNG画像の `tEXt` チャンク内に全メタデータJSONがバイナリ埋め込みされています。**Editor ビューア表示・ランタイムジャンプ・DataTable生成はすべて `.png` 1枚だけで完結**します。
    * **`.json` サイドカー（任意・既定 `ON`）**: UEを起動せずにテキストエディタで座標・GPU負荷を閲覧したり、Python集計スクリプト等から直接パースするための可読JSONです（Project Settings の `bWriteJsonSidecar` を `false` にすると `.png` のみ出力します）。
 3. **チームメンバー間での情報共有手順（`Saved/WcwSnapJump` の受け渡し）**:
-   * **報告者（渡す側）**: `<Project>/Saved/WcwSnapJump/` 内から該当する **`.png` ファイル**（テキスト確認用に `.json` とセットでも可）を Slack・Teams・Jira チケット等で共有します。
+   * **報告者（渡す側）**: `<Project>/Saved/WcwSnapJump/` 内から該当する **`.png` と `.json` のペア**（またはフォルダごとZIP。※直接コピー時は `.png` 単体でも動作しますが、チャットツールによる画像再圧縮対策としてペア共有を推奨）を Slack・Teams・Jira 等で共有します。
    * **確認者（受け取る側）**: 受け取った `.png` を自分のローカル環境の **`<Project>/Saved/WcwSnapJump/`** フォルダへそのままコピーします。
    * **一覧への即時反映と再現ジャンプ**: Editor なら `Wcw SnapJump Viewer` の **`Refresh Snapshot List`**、ゲーム実行中ならランタイムメニュー右上の **`Refresh`** を押すだけで一覧に現れ、相手の撮影環境（GPU・解像度）や負荷内訳を確認しつつワンクリック／決定ボタンで同じ地点へ即ジャンプできます。
 4. **パッケージ用アセットの一括生成**: `Window -> Wcw SnapJump Viewer` 上部の **`Import Textures & Build DataTable (For Package)`** を押すと、`DT_WcwSnapJump` と `CustomScreenShot/T_WcwSnap_*.uasset` の生成・物理保存および `DefaultGame.ini`（`DirectoriesToAlwaysCook` 含む）への登録が一括完了します。
