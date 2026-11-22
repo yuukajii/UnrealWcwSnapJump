@@ -418,3 +418,112 @@ void UWcwSnapJumpHandler::HandlePostJumpSetup_Implementation(UWorld* World, cons
 {
 	// Default: no-op. Override in Title subclass to restore Event flags, load sublevels, or play Cutscenes!
 }
+
+void UWcwSnapJumpHandler::GatherIssueTrackerUiFields_Implementation(
+	const FWcwSnapJumpData& SnapData,
+	TArray<FWcwIssueTrackerUiField>& OutUiFields)
+{
+	// Default: empty array (standard Redmine controls only).
+	// Override in Title C++ or Blueprint subclass to add interactive Priority / CustomField widgets to Wcw SnapJump Viewer.
+	OutUiFields.Reset();
+}
+
+FString UWcwSnapJumpHandler::FormatIssueTrackerSubject_Implementation(const FWcwSnapJumpData& SnapData, const FString& UserEnteredTitle)
+{
+	if (SnapData.CaptureTag.IsEmpty())
+	{
+		return UserEnteredTitle;
+	}
+	return FString::Printf(TEXT("[%s] %s"), *SnapData.CaptureTag, *UserEnteredTitle);
+}
+
+FString UWcwSnapJumpHandler::FormatIssueTrackerTelemetryBlock_Implementation(const FWcwSnapJumpData& SnapData)
+{
+	TArray<FString> Lines;
+	Lines.Add(TEXT("<pre>"));
+	Lines.Add(TEXT("[WcwSnapJump Telemetry & Scene Summary]"));
+	Lines.Add(FString::Printf(TEXT("Tag: %s | Timestamp: %s"), *SnapData.CaptureTag, *SnapData.Timestamp));
+	Lines.Add(FString::Printf(TEXT("Level: %s (%s)"), *SnapData.LevelName, *SnapData.LevelPackageName));
+
+	if (SnapData.LoadedStreamingLevels.Num() > 0)
+	{
+		Lines.Add(FString::Printf(TEXT("Streaming Sublevels (%d): %s"),
+			SnapData.LoadedStreamingLevels.Num(),
+			*FString::Join(SnapData.LoadedStreamingLevels, TEXT(", "))));
+	}
+
+	Lines.Add(FString::Printf(TEXT("Character Pos: X=%.1f, Y=%.1f, Z=%.1f | Rot: P=%.1f, Y=%.1f, R=%.1f"),
+		SnapData.CharacterLocation.X, SnapData.CharacterLocation.Y, SnapData.CharacterLocation.Z,
+		SnapData.CharacterRotation.Pitch, SnapData.CharacterRotation.Yaw, SnapData.CharacterRotation.Roll));
+	Lines.Add(FString::Printf(TEXT("Camera Pos:    X=%.1f, Y=%.1f, Z=%.1f | Rot: P=%.1f, Y=%.1f, R=%.1f | FOV: %.1f"),
+		SnapData.CameraLocation.X, SnapData.CameraLocation.Y, SnapData.CameraLocation.Z,
+		SnapData.CameraRotation.Pitch, SnapData.CameraRotation.Yaw, SnapData.CameraRotation.Roll,
+		SnapData.CameraFOV));
+
+	if (!SnapData.Environment.PlatformName.IsEmpty() || !SnapData.Environment.GpuAdapterName.IsEmpty())
+	{
+		Lines.Add(FString::Printf(TEXT("Environment:   %s | %s | %s | %s"),
+			*SnapData.Environment.PlatformName,
+			*SnapData.Environment.BuildEnvironment,
+			*SnapData.Environment.RhiName,
+			*SnapData.Environment.ViewportResolution));
+		if (!SnapData.Environment.GpuAdapterName.IsEmpty())
+		{
+			Lines.Add(FString::Printf(TEXT("GPU / Driver:  %s (%s) | CPU: %s"),
+				*SnapData.Environment.GpuAdapterName,
+				SnapData.Environment.GpuDriverVersion.IsEmpty() ? TEXT("N/A") : *SnapData.Environment.GpuDriverVersion,
+				*SnapData.Environment.CpuBrand));
+		}
+	}
+
+	Lines.Add(FString::Printf(TEXT("Performance:   %.2f FPS (Frame %.2f ms | Game %.2f ms | Draw %.2f ms | GPU %.2f ms)"),
+		SnapData.Stats.FPS, SnapData.Stats.FrameTimeMs, SnapData.Stats.GameThreadTimeMs,
+		SnapData.Stats.RenderThreadTimeMs, SnapData.Stats.GpuTimeMs));
+	Lines.Add(FString::Printf(TEXT("Memory:        Physical %.1f MB (Peak %.1f MB) | Texture VRAM %.1f MB"),
+		SnapData.Memory.UsedPhysicalMemoryMB, SnapData.Memory.PeakPhysicalMemoryMB, SnapData.Memory.TextureMemoryUsedMB));
+
+	if (SnapData.GpuTop10Passes.Num() > 0)
+	{
+		const int32 MaxPassesToShow = FMath::Min(5, SnapData.GpuTop10Passes.Num());
+		Lines.Add(FString::Printf(TEXT("GPU Top %d Passes:"), MaxPassesToShow));
+		for (int32 i = 0; i < MaxPassesToShow; ++i)
+		{
+			const FWcwGpuPassEntry& Pass = SnapData.GpuTop10Passes[i];
+			Lines.Add(FString::Printf(TEXT("  #%02d: %s - %.2f ms (%.1f%%)"),
+				i + 1, *Pass.PassName, Pass.DurationMs, Pass.PercentageOfFrame));
+		}
+	}
+
+	if (SnapData.CustomTitleTags.Num() > 0)
+	{
+		Lines.Add(TEXT("Custom Title State:"));
+		for (const TPair<FString, FString>& Pair : SnapData.CustomTitleTags)
+		{
+			Lines.Add(FString::Printf(TEXT("  %s = %s"), *Pair.Key, *Pair.Value));
+		}
+	}
+
+	Lines.Add(TEXT("</pre>"));
+	return FString::Join(Lines, LINE_TERMINATOR);
+}
+
+void UWcwSnapJumpHandler::GatherIssueTrackerPresetSelection_Implementation(
+	const FWcwSnapJumpData& SnapData,
+	FWcwIssueTrackerPresetSelection& OutPresetSelection)
+{
+	// Default: no-op. Override in Title C++ or Blueprint subclass to auto-select Tracker/Category/Assignee/ParentIssueId per snapshot.
+}
+
+void UWcwSnapJumpHandler::GatherIssueTrackerIssueFields_Implementation(
+	const FWcwSnapJumpData& SnapData,
+	TMap<FString, FString>& InOutIssueFields)
+{
+	// Default: no-op. Override in Title C++ or Blueprint subclass to inject priority_id, fixed_version_id, is_private, etc.
+}
+
+void UWcwSnapJumpHandler::GatherIssueTrackerCustomFields_Implementation(
+	const FWcwSnapJumpData& SnapData,
+	TMap<FString, FString>& InOutCustomFields)
+{
+	// Default: no-op. Override in Title C++ or Blueprint subclass to map SnapData.CustomTitleTags to Redmine Custom Field names or IDs.
+}

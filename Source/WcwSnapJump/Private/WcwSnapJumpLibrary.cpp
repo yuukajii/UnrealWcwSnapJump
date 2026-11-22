@@ -282,3 +282,57 @@ FString UWcwSnapJumpLibrary::FormatDetailedTelemetryReport(const FWcwSnapJumpDat
 	}
 	return SnapData.CaptureTag;
 }
+
+void UWcwSnapJumpLibrary::GatherIssueTrackerUiFields(const FWcwSnapJumpData& SnapData, TArray<FWcwIssueTrackerUiField>& OutUiFields)
+{
+	OutUiFields.Reset();
+	if (UWcwSnapJumpHandler* Handler = WcwSnapJumpInternal::ResolveFormattingHandler())
+	{
+		Handler->GatherIssueTrackerUiFields(SnapData, OutUiFields);
+	}
+}
+
+FString UWcwSnapJumpLibrary::FormatIssueTrackerSubject(const FWcwSnapJumpData& SnapData, const FString& UserEnteredTitle)
+{
+	if (UWcwSnapJumpHandler* Handler = WcwSnapJumpInternal::ResolveFormattingHandler())
+	{
+		return Handler->FormatIssueTrackerSubject(SnapData, UserEnteredTitle);
+	}
+	return SnapData.CaptureTag.IsEmpty()
+		? UserEnteredTitle
+		: FString::Printf(TEXT("[%s] %s"), *SnapData.CaptureTag, *UserEnteredTitle);
+}
+
+FString UWcwSnapJumpLibrary::FormatIssueTrackerTelemetryBlock(const FWcwSnapJumpData& SnapData)
+{
+	if (UWcwSnapJumpHandler* Handler = WcwSnapJumpInternal::ResolveFormattingHandler())
+	{
+		return Handler->FormatIssueTrackerTelemetryBlock(SnapData);
+	}
+	return FString();
+}
+
+void UWcwSnapJumpLibrary::GatherIssueTrackerPresetSelection(const FWcwSnapJumpData& SnapData, FWcwIssueTrackerPresetSelection& OutPresetSelection)
+{
+	OutPresetSelection = FWcwIssueTrackerPresetSelection();
+	if (UWcwSnapJumpHandler* Handler = WcwSnapJumpInternal::ResolveFormattingHandler())
+	{
+		Handler->GatherIssueTrackerPresetSelection(SnapData, OutPresetSelection);
+	}
+}
+
+void UWcwSnapJumpLibrary::GatherIssueTrackerIssueFields(const FWcwSnapJumpData& SnapData, TMap<FString, FString>& InOutIssueFields)
+{
+	if (UWcwSnapJumpHandler* Handler = WcwSnapJumpInternal::ResolveFormattingHandler())
+	{
+		Handler->GatherIssueTrackerIssueFields(SnapData, InOutIssueFields);
+	}
+}
+
+void UWcwSnapJumpLibrary::GatherIssueTrackerCustomFields(const FWcwSnapJumpData& SnapData, TMap<FString, FString>& InOutCustomFields)
+{
+	if (UWcwSnapJumpHandler* Handler = WcwSnapJumpInternal::ResolveFormattingHandler())
+	{
+		Handler->GatherIssueTrackerCustomFields(SnapData, InOutCustomFields);
+	}
+}

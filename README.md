@@ -2,7 +2,7 @@
 
 **Language / 言語**: **[English](#english) | [日本語](#日本語)**
 
-**Version**: `0.1.0 (Beta)` | **License**: MIT License | **Supported Unreal Engine**: UE 5.6 – 5.8+
+**Version**: `0.2.0 (Beta)` | **License**: MIT License | **Supported Unreal Engine**: UE 5.6 – 5.8+
 
 **Platforms**: Windows, PS5, Xbox Series X|S, Nintendo Switch / Switch 2 | **Created by**: [WinterCrownWORKS](https://winter-crown-works.com)
 
@@ -10,13 +10,13 @@
 
 ## English
 
-> **Beta Release Notice (`v0.1.0` Beta)**
+> **Beta Release Notice (`v0.2.0` Beta)**
 >
-> This plugin is currently released as **`v0.1.0` Beta** (`"IsBetaVersion": true` in `WcwSnapJump.uplugin`). Core features—including PNG metadata embedding, automatic platform & GPU hardware telemetry, Editor Viewer, packaged DataTable asset generation, console gamepad navigation, and title-side Override hooks—have been verified on target builds. API details, struct fields, or UI layouts may evolve toward `v1.0.0` based on feedback. Issues and feedback are welcome!
+> This plugin is currently released as **`v0.2.0` Beta** (`"IsBetaVersion": true` in `WcwSnapJump.uplugin`). New in `v0.2.0`: direct **Redmine Ticket Creation** inside `Wcw SnapJump Viewer` (Editor-only module, zero runtime overhead, dynamic Assignee/Priority/CustomField resolution, and Title-defined interactive UI controls via `UWcwSnapJumpHandler`). Issues and feedback are welcome!
 
-`WcwSnapJump` is an Unreal Engine C++ and Blueprint plugin that embeds **world coordinates, active levels, capture platform & GPU hardware info, frame telemetry (Stat Unit / GPU Top 10 / Memory), and custom title event or cutscene states** directly inside a lightweight PNG file (via a custom `WcwSnapJump` `tEXt` chunk right after `IHDR`). It enables thumbnail browsing and one-click / one-button scene teleportation across **Unreal Editor, PIE, and packaged console/PC builds**.
+`WcwSnapJump` is an Unreal Engine C++ and Blueprint plugin that embeds **world coordinates, active levels, capture platform & GPU hardware info, frame telemetry (Stat Unit / GPU Top 10 / Memory), and custom title event or cutscene states** directly inside a lightweight PNG file (via a custom `WcwSnapJump` `tEXt` chunk right after `IHDR`). It enables thumbnail browsing, Redmine ticket creation, and one-click / one-button scene teleportation across **Unreal Editor, PIE, and packaged console/PC builds**.
 
-For QA bug reporting and performance profiling, simply sharing the captured snapshot files (`.png` / `.json`) from `Saved/WcwSnapJump/` immediately shows which hardware recorded the spike and lets any team member jump straight to that exact location and game state.
+For QA bug reporting and performance profiling, simply sharing the captured snapshot files (`.png` / `.json`) from `Saved/WcwSnapJump/`—or posting them directly to Redmine from `Wcw SnapJump Viewer`—immediately shows which hardware recorded the spike and lets any team member jump straight to that exact location and game state.
 
 * **PDF Manual (English)**: [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf)
 * **PDF Manual (Japanese)**: [`Doc/WcwSnapJump_Documentation.pdf`](Doc/WcwSnapJump_Documentation.pdf)
@@ -28,6 +28,7 @@ For QA bug reporting and performance profiling, simply sharing the captured snap
 | **1. PIE Capture & Jump** (`Shot & Jump` / 29s) | Capturing snapshots with `Wcw.SnapJump.Shot` in PIE and jumping across locations from the left-half overlay menu | [https://www.youtube.com/watch?v=\_9tkhtKsjqI](https://www.youtube.com/watch?v=_9tkhtKsjqI) |
 | **2. Editor Viewer & Asset Build** (`EditorCheck` / 32s) | Comparing GPU load in `Wcw SnapJump Viewer`, 1-click Editor camera jump, and automated `DT_WcwSnapJump` baking | [https://www.youtube.com/watch?v=7EHGRMnf3EI](https://www.youtube.com/watch?v=7EHGRMnf3EI) |
 | **3. Packaged Build Jump** (`Packaged Build` / 36s) | Capturing live snapshots in a packaged build, unified listing with pre-cooked DataTable rows, and gamepad scene jumping | [https://www.youtube.com/watch?v=lxPwkk5PGUg](https://www.youtube.com/watch?v=lxPwkk5PGUg) |
+| **4. Direct Redmine Ticket Post** (`v0.2.0` / 46s) | Selecting Tracker, Category, Assignee & Parent Issue in `Wcw SnapJump Viewer`, posting with `.png`/`.json` attached, and opening in browser | [https://www.youtube.com/watch?v=aGKkPdFA2VY](https://www.youtube.com/watch?v=aGKkPdFA2VY) |
 
 ### Key Features
 
@@ -36,6 +37,10 @@ For QA bug reporting and performance profiling, simply sharing the captured snap
   * Automatically records **capture platform (`Windows` / `PS5` / `XSX` / `Switch`), build environment (`Editor/PIE` vs `Packaged`), GPU adapter & driver version, CPU brand, RHI (`D3D12` / `Vulkan`), and viewport resolution** alongside transform and GPU/memory stats.
 * **Editor Telemetry Comparison & Jump Viewer (`Wcw SnapJump Viewer`)**
   * Open `Window -> Wcw SnapJump Viewer` to compare **Platform / GPU**, FPS, frame time, GPU ms, #1 GPU bottleneck pass, and RAM usage side by side. Clicking a thumbnail **instantly moves the Editor Perspective camera** (or triggers a runtime jump during PIE).
+* **Direct Redmine Ticket Creation in Editor (`v0.2.0` — Editor-Isolated)**
+  * Post tickets (or child tickets under a parent issue) directly from the **`Redmine Ticket Post`** tab in `Wcw SnapJump Viewer` with automatic `.png` and `.json` binary attachment (`POST /uploads.json` + `POST /issues.json`).
+  * Team connection URL & parent ticket presets live in `Config/DefaultEditor.ini`, while each user's personal `X-Redmine-API-Key` (compatible with 2FA-enabled Redmine accounts) is stored strictly in local `Saved/Config/` (`EditorPerProjectUserSettings.ini`), preventing accidental Git/Perforce commits.
+  * Dynamically fetches project-specific **Trackers, Issue Categories, Issue Priorities (`/enumerations/issue_priorities.json`), Issue Custom Fields (`GET /projects/<id>.json?include=trackers,issue_categories,issue_custom_fields` + list options & `multiple` detection), and Assignable Project Members (`GET /projects/<id>/memberships.json`)**, automatically resolves human-readable Custom Field names (`TMap<FString, FString>`) to numeric Redmine IDs, and writes the created `#IssueID` into the local `.json` sidecar to prevent duplicate posting and open tickets in the browser in 1 click.
 * **One-Click Asset Pipeline for Console & Packaged Builds**
   * Clicking **`Import Textures & Build DataTable (For Package)`** imports all PNGs as persistent UI `UTexture2D` assets under `<DataTableFolder>/CustomScreenShot/`, saves `.uasset` files to disk via `UPackage::SavePackage`, updates `Config/DefaultGame.ini`, and registers `DirectoriesToAlwaysCook` automatically.
   * At runtime, pre-cooked `DefaultSnapJumpDataTable` rows (with `AssetRegistry` auto-discovery fallback) merge seamlessly with live in-session captures (`SessionCapturedSnaps`).
@@ -44,14 +49,14 @@ For QA bug reporting and performance profiling, simply sharing the captured snap
   * Applies `FInputModeUIOnly` + priority-0 `IInputProcessor` + per-frame focus enforcement so gamepad navigation works reliably even alongside `CommonUI` or right after closing the debug console.
   * Automatically follows Nintendo Switch / Switch 2 (Right `A` = Accept, Bottom `B` = Back) and PS5 / Xbox / PC conventions via `EKeys::Virtual_Accept` / `Virtual_Gamepad_Accept`.
 * **Non-Destructive Title-Side Customization (`UWcwSnapJumpHandler`)**
-  * Subclass in C++ or Blueprint (or bind Subsystem lambdas) to customize stat/GPU gathering, record quest flags or cutscene playback timestamps, format UI text, hook into custom async stage loaders, and trigger post-jump event/cutscene restoration without touching plugin source files.
+  * Subclass in C++ or Blueprint (or bind Subsystem lambdas) to customize stat/GPU gathering, record quest flags or cutscene playback timestamps, format UI text, **expose Title-specific interactive Redmine UI controls (Priority dropdown, Text/List/Multi-Select/Boolean Custom Fields)**, customize Redmine subject/description/presets/fields, hook into custom async stage loaders, and trigger post-jump event/cutscene restoration without touching plugin source files.
 
 ### Default Embedded Metadata Fields (`FWcwSnapJumpData`)
 
 | Category | Struct / Primary Fields | Example Recorded Values |
 | ----- | ----- | ----- |
-| **Identity & Timestamp** | `CaptureTag`, `TimestampIso8601`, `SourceFileName` | `"downtown_Heavy"`, `"2026-11-20T11:52:48Z"` |
-| **Platform & Hardware** (`FWcwEnvironmentSnapshot`) | `PlatformName`, `BuildEnvironment`, `GpuAdapterName`, `GpuDriverVersion`, `CpuBrand`, `RhiName`, `ViewportResolution` | `Windows` / `PS5` / `Switch`, `Development (Editor/PIE)` / `Development (Packaged)`, `NVIDIA GeForce RTX 4060 Ti` (Driver `581.29`), `D3D12`, `1920x1080` |
+| **Identity & Timestamp** | `CaptureTag`, `Timestamp`, `SourceFilePath` | `"downtown_Heavy"`, `"2026-11-20T11:52:48Z"` |
+| **Platform & Hardware** (`FWcwEnvironmentSnapshot`) | `PlatformName`, `BuildEnvironment`, `GpuAdapterName`, `GpuDriverVersion`, `CpuBrand`, `RhiName`, `ViewportResolution` | `Windows` / `PS5` / `Switch`, `Development (Editor/PIE)` / `Development (Packaged)`, `NVIDIA GeForce RTX 4060 Ti`, `D3D12`, `1920x1080` |
 | **Level & Transform** | `LevelName`, `LevelPackageName`, `LoadedStreamingLevels`, `CharacterLocation` / `Rotation`, `CameraLocation` / `Rotation` / `FOV` | Persistent level path, loaded streaming sublevels, Pawn transform, camera transform & FOV |
 | **Frame Timing (`stat unit`)** (`FWcwStatSnapshot`) | `FPS`, `FrameTimeMs`, `GameThreadTimeMs`, `RenderThreadTimeMs`, `GpuTimeMs`, `RhiThreadTimeMs`, `DrawCalls`, `PrimitivesDrawn` | `22.20 FPS`, Frame `45.05 ms`, GT `43.13 ms`, GPU `16.31 ms`, DrawCalls `1417` |
 | **Memory Usage** (`FWcwMemorySnapshot`) | `UsedPhysicalMemoryMB`, `PeakPhysicalMemoryMB`, `UsedVirtualMemoryMB`, `AvailablePhysicalMemoryMB` | Process physical RAM used, peak physical RAM, and available physical RAM (MB) |
@@ -60,25 +65,25 @@ For QA bug reporting and performance profiling, simply sharing the captured snap
 
 ### Repository Directory Structure
 
-Place `WcwSnapJump` under `Plugins/WcwSnapJump/` in your Unreal project. Files inside `Doc/` are ignored by Unreal Engine's asset cooker, adding zero size overhead to packaged ROMs.
+Place `WcwSnapJump` under `Plugins/WcwSnapJump/` in your Unreal project. Files inside `Doc/` and `WcwSnapJumpEditor` are excluded from packaged builds, adding zero size overhead to ROMs.
 
 ```text
 WcwSnapJump/
-├── WcwSnapJump.uplugin                 # Plugin descriptor (v0.1.0 Beta / Runtime + Editor)
+├── WcwSnapJump.uplugin                 # Plugin descriptor (v0.2.0 Beta / Runtime + Editor)
 ├── LICENSE                             # MIT License
 ├── Doc/                                # PDF manuals (EN/JA) & README screenshots
 │   ├── WcwSnapJump_Documentation_EN.pdf
 │   ├── WcwSnapJump_Documentation.pdf
 │   └── images/
-├── Samples/                            # Optional Title Override sample plugin (archived)
+├── Samples/                            # Optional Title Override sample plugin (archived, v0.2.0)
 │   └── WcwSnapJumpCityTest_Plugin.zip
 ├── README.md                           # Bilingual repository documentation (EN / JA)
 └── Source/
-    ├── WcwSnapJump/                    # Runtime module (Windows, Console & Packaged)
-    └── WcwSnapJumpEditor/              # Editor-only inspection & DataTable baking module
+    ├── WcwSnapJump/                    # Runtime module (Windows, Console & Packaged — zero HTTP/Slate dep)
+    └── WcwSnapJumpEditor/              # Editor-only Viewer, DataTable baker & Redmine REST client
 ```
 
-### Quick Start & Team Sharing Workflow
+### Quick Start, Redmine Ticket Posting & Team Sharing Workflow
 
 #### 1. Installation
 
@@ -93,23 +98,29 @@ Run the console command or Blueprint node during PIE, Standalone, or on a Consol
 * **Blueprint / C++**: `UWcwSnapJumpLibrary::CaptureWcwSnap(this, TEXT("downtown_Heavy"));`
 * **Paired `.png` & `.json` Roles** (`Saved/WcwSnapJump/WcwSnap_<Level>_<Tag>_<Timestamp>.png` / `.json`):
   * **`.png` Snapshot (Required / Self-Contained)**: Carries all serialized metadata inside its binary `tEXt` chunk. **Editor Viewer, Runtime Jump, and DataTable baking work from the `.png` file alone.**
-  * **`.json` Sidecar (Optional / Default `ON`)**: Human-readable JSON exported alongside the PNG for plain-text inspection or Python/CI parsing without opening Unreal (disable via `bWriteJsonSidecar = false` if only `.png` is needed).
+  * **`.json` Sidecar (Optional / Default `ON`)**: Human-readable JSON exported alongside the PNG for plain-text inspection, CI parsing, and local Redmine posted-ticket tracking.
 
 ![PIE Console Capture](Doc/images/PIE_ConsoleCommand.jpg)
 
 ![Packaged Build Console Capture](Doc/images/Pakage_ConsoleInput.jpg)
 
-#### 3. Sharing Snapshots Across Team Members (`Saved/WcwSnapJump` Exchange)
+#### 3. Posting Tickets Directly to Redmine (`v0.2.0` — [Video Demo](https://www.youtube.com/watch?v=aGKkPdFA2VY))
 
-1. **Reporter (Sender)**: Share the captured **`.png` and `.json` pair** (or zipped folder) from `<Project>/Saved/WcwSnapJump/` via Slack, Teams, or Jira *(direct file copies work from `.png` alone, while pairing with `.json` also protects against chat image re-compression stripping PNG chunks)*.
-2. **Investigator (Receiver)**: Drop the received `.png` file into your local **`<Project>/Saved/WcwSnapJump/`** folder.
-3. **Instant Repro**: Click **`Refresh Snapshot List`** in `Wcw SnapJump Viewer` (Editor) or **`Refresh`** in the runtime menu (in-game) to inspect the reporter's GPU/hardware stats and jump straight to the location (`Wcw.SnapJump.JumpFile <File.png>` also jumps directly).
+1. **Enable Redmine REST API**: In Redmine `Administration -> Settings -> API`, ensure **Enable REST web service** is checked.
+2. **Project Connection Setup (Shared `Config/DefaultEditor.ini`)**: Open `Project Settings -> Extension -> Wcw Snap Jump (Redmine Project)` (or click **`Redmine Settings...`** inside `Wcw SnapJump Viewer`) and paste your Redmine project URL (e.g. `http://192.168.1.50:3000/projects/sandbox`) into **`Paste Full Project URL (Auto-Split)`**—it automatically populates `RedmineBaseUrl` (with port) and `ProjectIdentifier`. Optionally register `ParentTicketPresets`, `DefaultCustomFields` (`Key = CustomFieldName`), and `DefaultExtraIssueFields`.
+3. **Personal API Key Setup (Local `Saved/Config/`)**: Open the **`Redmine Ticket Post`** tab in `Wcw SnapJump Viewer`, paste your personal API key from Redmine `/my/account`, and click **`Test & Save Local`**. Trackers, Categories, Priorities, Assignees, and Custom Field definitions for the project are fetched automatically.
+4. **One-Click Ticket Post**: Select a snapshot row, choose Tracker / Category / Assignee (or **`Assign to Me`**) / Parent Issue (plus any Title-defined Priority or Custom Field UI controls), edit the Subject (`[Tag]` auto-prefixed) and Description, and click **`Post Ticket to Redmine`**. Both `.png` and `.json` are attached automatically, and the created `#IssueID` badge appears in the `Redmine` column (click to open in browser).
 
-#### 4. Editor Inspection & Packaged Build Asset Generation
+![Redmine Project Settings](Doc/images/Editor_RedmineSettings.jpg)
 
-1. Open **`Window -> Wcw SnapJump Viewer`** in Unreal Editor ([Video Demo](https://www.youtube.com/watch?v=7EHGRMnf3EI)).
-2. Click any thumbnail on the left to move the Editor Perspective camera (or jump in PIE).
-3. Click **`Import Textures & Build DataTable (For Package)`** to generate `/Game/WcwSnapJump/DT_WcwSnapJump` and `CustomScreenShot/T_WcwSnap_*.uasset`, save `.uasset` packages to disk, and register `DefaultGame.ini` + `DirectoriesToAlwaysCook`.
+![Editor Redmine Ticket Post Tab](Doc/images/Editor_RedminePost.jpg)
+
+![Posted Redmine Ticket in Browser](Doc/images/Redmine_PostedTicket.jpg)
+
+#### 4. Sharing Snapshots Manually & Editor DataTable Generation
+
+1. **Folder Sharing**: Share `.png` + `.json` from `<Project>/Saved/WcwSnapJump/`, drop into another machine's `Saved/WcwSnapJump/`, and click **`Refresh Snapshot List`**.
+2. **Packaged Build Baking**: In `Window -> Wcw SnapJump Viewer`, click **`Import Textures & Build DataTable (For Package)`** to generate `/Game/WcwSnapJump/DT_WcwSnapJump` and `CustomScreenShot/T_WcwSnap_*.uasset`, save `.uasset` packages to disk, and register `DefaultGame.ini` + `DirectoriesToAlwaysCook`.
 
 ![Editor SnapJump Viewer](Doc/images/Editor_TabDisplay.jpg)
 
@@ -146,20 +157,18 @@ Open the left-half overlay menu in-game via `Wcw.SnapJump.ToggleMenu` or `r.Wcw.
 
 ### Title-Side Override Guide (`UWcwSnapJumpHandler`)
 
-Subclass `UWcwSnapJumpHandler` (in C++ or Blueprint) and assign it under `Project Settings -> Extension -> Wcw Snap Jump -> CustomJumpHandlerClass` to customize capture and jump behavior without modifying plugin code:
+Subclass `UWcwSnapJumpHandler` (in C++ or Blueprint) and assign it under `Project Settings -> Extension -> Wcw Snap Jump -> CustomJumpHandlerClass`:
 
-* **`OnGatherTitleCustomMeta`**: Append quest/event IDs or cutscene playback timestamps to `CustomTitleTags` or `CustomJsonPayload` (serialize custom `USTRUCT` data via `FJsonObjectConverter::UStructToJsonObjectString`).
-* **`GatherStatAndGpuTelemetry`**: Inject custom title GPU profiler or RDG pass durations.
+* **`OnGatherTitleCustomMeta` / `GatherStatAndGpuTelemetry`**: Append quest/event IDs, cutscene timestamps, or custom title GPU profiler metrics.
 * **`FormatThumbnailSummary` / `FormatDetailedReport`**: Customize row summary and detail pane text across both Editor Viewer and Runtime UI.
-* **`ShouldTransitionLevel` / `HandleLevelTransition`**: Route map loads through your custom fade & async stage loader. Set `bAutoApplyOnEnginePostLoadMap = false` in your handler constructor and call `UWcwSnapJumpLibrary::NotifyWcwLevelLoadCompleted(WorldContext)` once async sublevels and the PlayerPawn are ready.
-* **`HandleSameLevelTeleport` / `HandlePostJumpSetup`**: Apply event flags and trigger cutscene playback at the recorded timestamp right after teleportation or map load completion.
-
-*(See [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf) or the C++ implementation block in the Japanese section below for complete `UMyTitleSnapJumpHandler` code examples.)*
+* **`ShouldTransitionLevel` / `HandleLevelTransition` / `HandlePostJumpSetup`**: Route map loads through your custom fade & async stage loader and restore cutscene/event state after jumping.
+* **`GatherIssueTrackerUiFields` (`v0.2.0+`)**: Declare interactive Title-specific UI controls (**Priority dropdown**, **Text Box**, **Single-Select Dropdown**, **Multi-Select Checkboxes**, or **Boolean CheckBox** for Redmine Custom Fields & Standard Fields) rendered directly inside `Wcw SnapJump Viewer`.
+* **`FormatIssueTrackerSubject` / `FormatIssueTrackerTelemetryBlock` (`v0.2.0+`)**: Customize Redmine ticket Subject naming rules (e.g. `[Platform][Level][Tag]`) and `<pre>` / Markdown telemetry blocks.
+* **`GatherIssueTrackerPresetSelection` / `GatherIssueTrackerIssueFields` / `GatherIssueTrackerCustomFields` (`v0.2.0+`)**: Auto-select Redmine Tracker/Category/Assignee/Parent Issue per snapshot, and inject standard `issue` fields (`priority_id`, `fixed_version_id`) or name-based `custom_fields` (`TMap<FString, FString>`).
 
 #### Tutorial / Sample Plugin (Built for UE 5.8 `CitySample`)
 
-* **Archive**: [`Samples/WcwSnapJumpCityTest_Plugin.zip`](Samples/WcwSnapJumpCityTest_Plugin.zip)
-* Designed specifically to test and learn Title Override workflows inside Epic Games' **Unreal Engine 5.8 `CitySample`** (`Plugins/WcwSnapJumpCityTest/`). Demonstrates custom GPU pass injection, `[X] Fly` vs `Walking` mode restoration, Sun angle (Time-of-Day) & scalability CVar (`USTRUCT` JSON) restoration, and `UWorldPartitionSubsystem` streaming-complete wait with camera fade. *(Uses standard Engine C++ APIs only, so its code can also be reused as a template in any project.)*
+* **Archive (`v0.2.0`)**: [`Samples/WcwSnapJumpCityTest_Plugin.zip`](Samples/WcwSnapJumpCityTest_Plugin.zip)
 
 ## 日本語
 
@@ -167,11 +176,9 @@ Subclass `UWcwSnapJumpHandler` (in C++ or Blueprint) and assign it under `Projec
 
 > **Beta Release Notice（ベータ版公開について）**
 >
-> 本プラグインは現在 **`v0.1.0` ベータ版**（`WcwSnapJump.uplugin` にて `"IsBetaVersion": true` 指定）として公開されています。コア機能（PNGへのメタ情報埋め込み・プラットフォーム／GPU環境情報の自動記録・Editorビューア・パッケージ用DataTable生成・コンソール実機でのコントローラー操作・タイトル側Override機構）は一通り実機検証済みですが、正式版（`v1.0.0`）に向けてフィードバックに応じたAPI・構造体フィールドやUIレイアウトの改善・変更が行われる場合があります。Issueやフィードバックを歓迎します。
+> 本プラグインは現在 **`v0.2.0` ベータ版**（`WcwSnapJump.uplugin` にて `"IsBetaVersion": true` 指定）として公開されています。`v0.2.0` では Editor の **`Wcw SnapJump Viewer` から直接 Redmine へチケット起票・添付送信できる連携機能**（`WcwSnapJumpEditor` モジュール内完結・ランタイム負荷ゼロ・担当者＆優先度＆リスト型CustomField動的解決・タイトル側からのRedmine専用UIコントロール追加＆全項目Override対応）を追加しました。Issueやフィードバックを歓迎します。
 
-`WcwSnapJump` は、プレイ中の軽量スクリーンショット（PNGファイル自体）に **座標・カレントレベル・撮影プラットフォーム＆GPU／ハードウェア環境情報・フレーム負荷（Stat / GPU Top 10 / メモリ）・タイトル固有のイベント進捗度やカットシーン再生情報** を直接バイナリ埋め込み（PNG `tEXt` チャンク）し、**Editor・PIE・コンソール実機（パッケージビルド）のすべてでサムネイル一覧表示とワンクリック／ワンボタンでのシーンジャンプ＆状態再現**を実現する Unreal Engine C++ / Blueprint プラグインです。
-
-QAチームからのバグ報告や開発中の負荷共有において、「`Saved/WcwSnapJump/` に出力されたスナップショット（`.png` / `.json`）を受け渡すだけで、どの実機／GPU環境で撮られた負荷なのか一目で分かり、誰の環境でもその場所・そのイベント状態へ即ジャンプして再現できる」ワークフローを提供します。
+`WcwSnapJump` は、プレイ中の軽量スクリーンショット（PNGファイル自体）に **座標・カレントレベル・撮影プラットフォーム＆GPU／ハードウェア環境情報・フレーム負荷（Stat / GPU Top 10 / メモリ）・タイトル固有のイベント進捗度やカットシーン再生情報** を直接バイナリ埋め込み（PNG `tEXt` チャンク）し、**Editor・PIE・コンソール実機（パッケージビルド）でのサムネイル一覧表示・Redmineチケット自動添付起票・ワンクリックでのシーンジャンプ＆状態再現**を実現する Unreal Engine C++ / Blueprint プラグインです。
 
 * **PDFマニュアル（日本語版）**: [`Doc/WcwSnapJump_Documentation.pdf`](Doc/WcwSnapJump_Documentation.pdf)
 * **PDFマニュアル（英語版）**: [`Doc/WcwSnapJump_Documentation_EN.pdf`](Doc/WcwSnapJump_Documentation_EN.pdf)
@@ -183,116 +190,82 @@ QAチームからのバグ報告や開発中の負荷共有において、「`Sa
 | **1. PIE 撮影＆連続ジャンプ** (`Shot & Jump` / 29秒) | PIE実行中の `Wcw.SnapJump.Shot` 撮影と、左半分オーバーレイメニューからの連続ロケーションジャンプ | [https://www.youtube.com/watch?v=\_9tkhtKsjqI](https://www.youtube.com/watch?v=_9tkhtKsjqI) |
 | **2. Editor ビューア＆パッケージ構築** (`EditorCheck` / 32秒) | `Wcw SnapJump Viewer` での負荷比較、サムネイルクリックによるEditorカメラ即移動、`DT_WcwSnapJump` 自動生成 | [https://www.youtube.com/watch?v=7EHGRMnf3EI](https://www.youtube.com/watch?v=7EHGRMnf3EI) |
 | **3. パッケージ実機 撮影＆ジャンプ** (`Packaged Build` / 36秒) | パッケージ版での新規スナップショット追加撮影、事前焼き込みDataTableとの統合一覧表示、コントローラー操作での即ジャンプ | [https://www.youtube.com/watch?v=lxPwkk5PGUg](https://www.youtube.com/watch?v=lxPwkk5PGUg) |
+| **4. Redmine チケット直接起票** (`v0.2.0` 新機能 / 46秒) | `Wcw SnapJump Viewer` からのトラッカー・担当者・親チケット選択、`.png`/`.json` 自動添付起票とブラウザ確認 | [https://www.youtube.com/watch?v=aGKkPdFA2VY](https://www.youtube.com/watch?v=aGKkPdFA2VY) |
 
 ### 主な特徴
 
 * **PNG単体完結のメタデータ＆撮影環境埋め込み (`FWcwSnapJumpSerializer` / `FWcwEnvironmentSnapshot`)**
-  * 元画面のアスペクト比を維持した軽量PNG（既定で長辺 `512px`、16:9時は `512x288`）の `IHDR` 直後に独自 `tEXt` チャンク（`WcwSnapJump`）を埋め込みます。あわせてテキスト閲覧・外部スクリプト連携用の同名 `.json` サイドカーも対で出力できます。
-  * 座標・Stat・GPU負荷に加えて、**撮影プラットフォーム（`Windows` / `PS5` / `XSX` / `Switch` 等）・実行ビルド環境（`Editor/PIE` か `Packaged` か）・使用グラフィックボード名＆ドライババージョン・CPU名・RHI（`D3D12` / `Vulkan` 等）・撮影時の実解像度**をデフォルトで自動記録します。
+  * 元画面のアスペクト比を維持した軽量PNG（既定で長辺 `512px`、16:9時は `512x288`）の `IHDR` 直後に独自 `tEXt` チャンク（`WcwSnapJump`）を埋め込み、同名 `.json` サイドカーも対で出力できます。
 * **Editor専用の負荷・環境比較＆ジャンプビューア (`Wcw SnapJump Viewer`)**
-  * `Window -> Wcw SnapJump Viewer` から撮影済みスナップショットを一覧表示。**Platform / GPU**・FPS・フレーム時間・GPU時間・GPUボトルネック1位・メモリ使用量を横並びで比較でき、サムネイルクリックで **Editorカメラの即移動（非PIE時）** または **ランタイムジャンプ（PIE実行中）** が走ります。
-* **コンソール実機・パッケージビルド完全対応のアセット自動構築**
-  * Editorビューアの **`Import Textures & Build DataTable (For Package)`** ボタン1つで、各PNGを `<DataTable配置フォルダ>/CustomScreenShot/` 配下に永続 `UTexture2D` アセット（`.uasset`）として自動インポート・ディスク物理保存し、`UDataTable` へのメタデータ焼き込み、`Config/DefaultGame.ini` の更新、`DirectoriesToAlwaysCook` への自動登録まで一括完了します。
-  * パッケージ実行時は `DefaultSnapJumpDataTable` に加え、ランタイム `AssetRegistry` による自動DataTable検出フォールバックと、実機セッション中に新規撮影したスナップショットのオンメモリ即時反映（`SessionCapturedSnaps`）を備えています。
-* **コンソール機のコントローラー操作に最適化したランタイムUI (`UWcwSnapJumpBrowserWidget`)**
-  * ゲーム画面の右半分を隠さない「画面左半分・上下2段構成」のオーバーレイUIを採用。
-  * メニュー表示中は `FInputModeUIOnly` ＋ `IInputProcessor`（最優先Index 0登録）＋毎フレームのフォーカス強制維持により、`CommonUI` 採用タイトルやデバッグコンソール閉鎖直後でも確実にコントローラー入力を捕捉します。
-  * `EKeys::Virtual_Accept` / `Virtual_Gamepad_Accept`（UE 5.6以下・5.7以降自動切替）により、Switch / Switch 2（右A＝決定・下B＝キャンセル）や PS5 / Xbox / PC の各プラットフォーム規約に自動で従います。
+  * `Window -> Wcw SnapJump Viewer` から **Platform / GPU**・FPS・GPU時間・GPUボトルネック1位・メモリ使用量を比較し、サムネイルクリックで **Editorカメラの即移動（非PIE時）** または **ランタイムジャンプ（PIE実行中）** を行えます。
+* **Redmine チケット直接起票・自動添付 (`v0.2.0` 新機能 / Editorモジュール完全分離)**
+  * `Wcw SnapJump Viewer` 右ペインの **`Redmine Ticket Post`** タブから、選択中の `.png` と `.json` を自動バイナリアップロード（`POST /uploads.json`）したうえで子チケット・通常チケットを直接起票できます。
+  * **共有Configと個人認証の安全な分離**: 接続先URL（ポート込み）や親チケット候補リストは `Config/DefaultEditor.ini` でチーム共有し、個人の `ApiAccessKey`（`X-Redmine-API-Key` ヘッダ送信・2段階認証有効アカウントでも利用可能）は `Saved/Config/` 配下の `EditorPerProjectUserSettings.ini` にのみ保存されるため、Git / Perforce への誤コミットが起きません。
+  * **トラッカー・カテゴリ・優先度・担当者・カスタムフィールド（テキスト／リスト／複数選択）の動的取得**: `GET /projects/<id>.json?include=trackers,issue_categories,issue_custom_fields`・`GET /enumerations/issue_priorities.json`・`GET /projects/<id>/memberships.json` でサーバー設定を自動取得。カスタムフィールドはフィールド名（例: `"CustomFieldTest"`, `"CustomFieldTest_List"`）で指定でき、数値IDへの変換および `multiple=true` リスト項目の配列JSON送信まで自動処理します。
+  * **二重起票の防止**: 起票成功時に新規チケット番号（例: `#9`）をローカル `.json` へ書き戻し、一覧の `Redmine` 列から1クリックでブラウザの該当チケットを開けます。
+* **コンソール実機・パッケージビルド完全対応のアセット自動構築＆パッド操作対応UI**
+  * **`Import Textures & Build DataTable (For Package)`** 1ボタンでパッケージ組み込み用アセットを生成・Cook登録し、Switch / Switch 2・PS5・Xbox・PC のコントローラー操作で巡回ジャンプできます。
 * **タイトル側で自在にOverrideできる拡張設計 (`UWcwSnapJumpHandler`)**
-  * プラグイン本体に一切手を入れることなく、C++またはBlueprintの派生クラス（あるいはSubsystemデリゲート）から **「Stat/GPU情報の差し替え」「イベント進捗やカットシーン再生秒数の記録」「UI表示テキストの整形」「タイトル独自のフェード／非同期レベルローダーへの差し替え」「ジャンプ完了後のイベント・カットシーン自動再生」** をすべてカスタマイズできます。
+  * プラグイン無改造で C++ / Blueprint から状態収集・ロード待ち・ジャンプ後復元に加え、**`GatherIssueTrackerUiFields` によるタイトル専用のRedmine操作UI（優先度ドロップダウン・テキスト／リスト型CustomField等）の追加**や、件名規則・テレメトリ本文・自動フィールド注入まで一括カスタマイズ可能です。
 
-### 導入・撮影（`.png` / `.json` ペア出力）・チーム間共有ワークフロー
+### Redmine 連携セットアップ手順（`v0.2.0` — [デモ動画](https://www.youtube.com/watch?v=aGKkPdFA2VY)）
 
-1. **インストール**: プロジェクト直下の `Plugins/WcwSnapJump/` に配置してビルドします（`Doc/` 内のPDFや説明画像はエンジンのクック対象外のため、パッケージビルドの実機ROM容量には一切影響しません）。
-2. **スナップショットの撮影 (`Wcw.SnapJump.Shot [Tag]`)**:
-   * `Saved/WcwSnapJump/` 配下に同名の **`.png` と `.json` がペアで出力**されます。
-   * **`.png` ファイル（必須・単体完結）**: 軽量PNG画像の `tEXt` チャンク内に全メタデータJSONがバイナリ埋め込みされています。**Editor ビューア表示・ランタイムジャンプ・DataTable生成はすべて `.png` 1枚だけで完結**します。
-   * **`.json` サイドカー（任意・既定 `ON`）**: UEを起動せずにテキストエディタで座標・GPU負荷を閲覧したり、Python集計スクリプト等から直接パースするための可読JSONです（Project Settings の `bWriteJsonSidecar` を `false` にすると `.png` のみ出力します）。
-3. **チームメンバー間での情報共有手順（`Saved/WcwSnapJump` の受け渡し）**:
-   * **報告者（渡す側）**: `<Project>/Saved/WcwSnapJump/` 内から該当する **`.png` と `.json` のペア**（またはフォルダごとZIP。※直接コピー時は `.png` 単体でも動作しますが、チャットツールによる画像再圧縮対策としてペア共有を推奨）を Slack・Teams・Jira 等で共有します。
-   * **確認者（受け取る側）**: 受け取った `.png` を自分のローカル環境の **`<Project>/Saved/WcwSnapJump/`** フォルダへそのままコピーします。
-   * **一覧への即時反映と再現ジャンプ**: Editor なら `Wcw SnapJump Viewer` の **`Refresh Snapshot List`**、ゲーム実行中ならランタイムメニュー右上の **`Refresh`** を押すだけで一覧に現れ、相手の撮影環境（GPU・解像度）や負荷内訳を確認しつつワンクリック／決定ボタンで同じ地点へ即ジャンプできます。
-4. **パッケージ用アセットの一括生成**: `Window -> Wcw SnapJump Viewer` 上部の **`Import Textures & Build DataTable (For Package)`** を押すと、`DT_WcwSnapJump` と `CustomScreenShot/T_WcwSnap_*.uasset` の生成・物理保存および `DefaultGame.ini`（`DirectoriesToAlwaysCook` 含む）への登録が一括完了します。
-5. **ランタイムメニュー開閉**: ゲーム中に `Wcw.SnapJump.ToggleMenu` または `r.Wcw.SnapJump.Menu 1` を実行します。
+1. **Redmine側の確認**: Redmine管理画面の `管理 -> 設定 -> API` にて **「RESTによるWebサービスを有効にする」** にチェックが入っていることを確認します。
+2. **プロジェクト共有設定（`Config/DefaultEditor.ini`）**: `Wcw SnapJump Viewer` 右上の **`Redmine Settings...`**（または `Project Settings -> Extension -> Wcw Snap Jump (Redmine Project)`）を開き、**`Paste Full Project URL (Auto-Split)`** にプロジェクトURL（例: `http://192.168.1.50:3000/projects/sandbox`）を貼り付けると、ポート込みの `RedmineBaseUrl` と `ProjectIdentifier` に自動分割されます。親チケット候補は `ParentTicketPresets`、カスタムフィールド固定値は `DefaultCustomFields`（Keyにフィールド名）へ登録できます。
+3. **個人APIアクセスキーのローカル保存（`Saved/Config/`）**: Redmineの「個人設定（`/my/account`）」右欄にある **APIアクセスキー** をコピーし、`Wcw SnapJump Viewer` の **`Redmine Ticket Post`** タブ内に入力して **`Test & Save Local`** を押します（接続確認と同時にプロジェクトのトラッカー・カテゴリ・優先度・担当者・カスタムフィールド定義が自動取得されます）。
+4. **チケット投稿**: 左の一覧でスナップショットを選び、トラッカー・カテゴリ・担当者（または **`Assign to Me`**）・親チケット（およびタイトル専用UI欄の優先度やカスタムフィールド）・題名・説明を入力して **`Post Ticket to Redmine`** を押すと、`.png` と `.json` が自動添付されたチケットが作成され、一覧の `Redmine` 列に `#番号` リンクボタンが表示されます。
 
-### Project Settings (`Project Settings -> Extension -> Wcw Snap Jump`)
+![Redmine Project Settings](Doc/images/Editor_RedmineSettings.jpg)
 
-| プロパティ名 | 既定値 | 説明 |
-| ----- | ----- | ----- |
-| `bEnableWcwSnapJump` | `true` | プラグイン機能の有効／無効マスタートグル。 |
-| `SaveDirectoryRelative` | `"WcwSnapJump"` | `Saved/` 配下のPNGおよびJSON保存フォルダ名。 |
-| `ImportedTextureSubfolderName` | `"CustomScreenShot"` | DataTable生成時にテクスチャアセットを格納するサブフォルダ名。 |
-| `ScreenshotWidth` / `ScreenshotHeight` | `512` / `512` | アスペクト比を維持してリサイズする最大枠サイズ（1920x1080なら `512x288` で保存）。 |
-| `bShowUIInScreenshot` | `false` | 撮影時にUIを含めるかの既定値。 |
-| `bWriteJsonSidecar` | `true` | PNGと同名の `.json` ファイルも同時出力するかどうか。 |
-| `MaxGpuTopPasses` | `10` | 記録するGPU負荷上位パス数（1〜50）。 |
-| `DefaultSnapJumpDataTable` | `/Game/WcwSnapJump/DT_WcwSnapJump` | パッケージ・ランタイムで標準参照する `UDataTable` アセット。 |
-| `CustomJumpHandlerClass` | `UWcwSnapJumpHandler` | **タイトル固有の情報収集・UI表示・レベルロード・イベント再生を行うハンドラクラス。** |
+![Editor Redmine Ticket Post Tab](Doc/images/Editor_RedminePost.jpg)
+
+![Posted Redmine Ticket in Browser](Doc/images/Redmine_PostedTicket.jpg)
 
 ### タイトル側でのOverride（C++ / Blueprint カスタマイズ例）
 
-`UWcwSnapJumpHandler` を継承して `CustomJumpHandlerClass` に指定するだけで、プラグイン本体を書き換えずにイベント進捗復元・カットシーン途中再生・独自非同期レベルローダー連携を組み込めます。
-
 ```cpp
-// MyTitleSnapJumpHandler.cpp（主要Override例）
-UMyTitleSnapJumpHandler::UMyTitleSnapJumpHandler()
+// MyTitleSnapJumpHandler.cpp（タイトル専用のRedmine操作UI追加 ＋ 自動フィールド連携例）
+void UMyTitleSnapJumpHandler::GatherIssueTrackerUiFields_Implementation(
+	const FWcwSnapJumpData& SnapData, TArray<FWcwIssueTrackerUiField>& OutUiFields)
 {
-	// 独自非同期レベルローダー完了待ちを行う場合は false にし、
-	// ロード完了コールバックで UWcwSnapJumpLibrary::NotifyWcwLevelLoadCompleted() を呼びます。
-	bAutoApplyOnEnginePostLoadMap = false;
-}
+	// 1. 優先度 (priority_id) ドロップダウン（Redmineの /enumerations/issue_priorities.json から候補と既定値を自動取得）
+	FWcwIssueTrackerUiField PriorityUi;
+	PriorityUi.FieldKey = TEXT("priority_id");
+	PriorityUi.DisplayLabel = TEXT("Priority");
+	PriorityUi.ControlType = EWcwIssueTrackerUiControlType::Dropdown;
+	PriorityUi.TargetType = EWcwIssueTrackerFieldTarget::RedminePriority;
+	OutUiFields.Add(PriorityUi);
 
-void UMyTitleSnapJumpHandler::OnGatherTitleCustomMeta_Implementation(
-	UObject* WorldContextObject, FWcwSnapJumpData& InOutSnapData)
-{
-	InOutSnapData.CustomTitleTags.Add(TEXT("Chapter"), TEXT("Ch03"));
-	InOutSnapData.CustomTitleTags.Add(TEXT("EventStep"), TEXT("3020_BossIntro"));
-	InOutSnapData.CustomTitleTags.Add(TEXT("CutsceneAsset"), TEXT("/Game/Cinematics/CS_03_020.CS_03_020"));
-	InOutSnapData.CustomTitleTags.Add(TEXT("CutsceneTimeSec"), TEXT("14.50"));
-}
+	// 2. テキスト型 CustomField 入力欄
+	FWcwIssueTrackerUiField TextCf;
+	TextCf.FieldKey = TEXT("CustomFieldTest");
+	TextCf.DisplayLabel = TEXT("CustomFieldTest");
+	TextCf.ControlType = EWcwIssueTrackerUiControlType::TextBox;
+	TextCf.TargetType = EWcwIssueTrackerFieldTarget::CustomField;
+	TextCf.DefaultValue = TEXT("CustomWrite");
+	OutUiFields.Add(TextCf);
 
-bool UMyTitleSnapJumpHandler::HandleLevelTransition_Implementation(
-	UWorld* World, const FWcwSnapJumpData& SnapData)
-{
-	UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
-	if (!GI) return false;
-
-	/* --- タイトル独自の非同期レベルローダーへ接続する場合 ---
-	GI->GetSubsystem<UMyAsyncStageLoader>()->LoadStageAsync(
-		SnapData.LevelPackageName, SnapData.LoadedStreamingLevels,
-		FSimpleDelegate::CreateLambda([GI]()
-		{
-			UWcwSnapJumpLibrary::NotifyWcwLevelLoadCompleted(GI);
-		}));
-	return true;
-	--------------------------------------------------------- */
-	return Super::HandleLevelTransition_Implementation(World, SnapData);
-}
-
-void UMyTitleSnapJumpHandler::HandlePostJumpSetup_Implementation(
-	UWorld* World, const FWcwSnapJumpData& SnapData)
-{
-	FString EventStep, CutscenePath, TimeStr;
-	if (UWcwSnapJumpLibrary::GetWcwCustomTitleTag(SnapData, TEXT("EventStep"), EventStep))
-	{
-		// MyEventManager->SetEventProgressForDebug(EventStep);
-	}
-	if (UWcwSnapJumpLibrary::GetWcwCustomTitleTag(SnapData, TEXT("CutsceneAsset"), CutscenePath) && !CutscenePath.IsEmpty())
-	{
-		const float StartSec = UWcwSnapJumpLibrary::GetWcwCustomTitleTag(SnapData, TEXT("CutsceneTimeSec"), TimeStr)
-			? FCString::Atof(*TimeStr) : 0.0f;
-		// MyCutsceneManager->PlayCutsceneFromSeconds(CutscenePath, StartSec);
-	}
+	// 3. リスト型 CustomField ドロップダウン（Redmine側の候補リスト・multiple=true配列形式も自動同期）
+	FWcwIssueTrackerUiField ListCf;
+	ListCf.FieldKey = TEXT("CustomFieldTest_List");
+	ListCf.DisplayLabel = TEXT("CustomFieldTest_List");
+	ListCf.ControlType = EWcwIssueTrackerUiControlType::Dropdown; // MultiSelect で複数チェックボックスも可
+	ListCf.TargetType = EWcwIssueTrackerFieldTarget::CustomField;
+	ListCf.DefaultValue = TEXT("None");
+	ListCf.Options = {
+		FWcwIssueTrackerUiOption(TEXT("(Unselected)"), TEXT("")),
+		FWcwIssueTrackerUiOption(TEXT("None"), TEXT("None")),
+		FWcwIssueTrackerUiOption(TEXT("Test_1"), TEXT("Test_1")),
+		FWcwIssueTrackerUiOption(TEXT("Test_2"), TEXT("Test_2")),
+		FWcwIssueTrackerUiOption(TEXT("Test_3"), TEXT("Test_3"))
+	};
+	OutUiFields.Add(ListCf);
 }
 ```
 
-* **Blueprint での Override**: `WcwSnapJumpHandler` を親とする Blueprint クラスを作成し、`On Gather Title Custom Meta` / `Handle Level Transition` / `Handle Post Jump Setup` をオーバーライドして `CustomJumpHandlerClass` に設定します。
-* **Subsystem デリゲート直接登録**: サブクラスを作らず `SnapSys->OnNativeGatherSnap().AddLambda(...)` や `SnapSys->OnNativeJumpOverride().BindLambda(...)` でフックすることも可能です。
-* **独自 `USTRUCT` の埋め込み**: `FJsonObjectConverter::UStructToJsonObjectString` で `InOutSnapData.CustomJsonPayload` に格納し、ジャンプ後に復元できます。
 #### チュートリアル／サンプルプラグイン（UE 5.8 `CitySample` 向け）
 
-* **同梱ZIP**: [`Samples/WcwSnapJumpCityTest_Plugin.zip`](Samples/WcwSnapJumpCityTest_Plugin.zip)
-* Epic Games 配布の **UE 5.8『CitySample』** に追加配置（`CitySample/Plugins/WcwSnapJumpCityTest/`）してタイトル側 Override の一通りの実装を体験・検証するための公式サンプルプラグインです。独自GPUパス注入、`[X] Fly` 飛行／徒歩モード復元、太陽ライト角度（時間帯）や描画CVar構造体（`USTRUCT` JSON）の保存・復元、`UWorldPartitionSubsystem` ストリーミング完了待ち＋カメラフェードを収録しています（エンジン標準APIのみで記述しているため、他プロジェクトへのコード流用も可能です）。
+* **同梱ZIP (`v0.2.0`)**: [`Samples/WcwSnapJumpCityTest_Plugin.zip`](Samples/WcwSnapJumpCityTest_Plugin.zip)
 
 ## License / ライセンス
 

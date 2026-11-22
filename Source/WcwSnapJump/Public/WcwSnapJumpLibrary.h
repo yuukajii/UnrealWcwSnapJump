@@ -66,4 +66,28 @@ public:
 	/** Format detailed telemetry & Title state report (delegates to CustomJumpHandlerClass so Title overrides work in both Editor & Runtime!). */
 	UFUNCTION(BlueprintPure, Category = "Wcw|SnapJump")
 	static FString FormatDetailedTelemetryReport(const FWcwSnapJumpData& SnapData);
+
+	/** Invoke CustomJumpHandlerClass::GatherIssueTrackerUiFields to build interactive Title-specific UI controls in Wcw SnapJump Viewer. */
+	UFUNCTION(BlueprintCallable, Category = "Wcw|SnapJump|IssueTracker")
+	static void GatherIssueTrackerUiFields(const FWcwSnapJumpData& SnapData, TArray<FWcwIssueTrackerUiField>& OutUiFields);
+
+	/** Format auto-prefixed Issue Tracker / Redmine ticket Subject via CustomJumpHandlerClass. */
+	UFUNCTION(BlueprintPure, Category = "Wcw|SnapJump|IssueTracker")
+	static FString FormatIssueTrackerSubject(const FWcwSnapJumpData& SnapData, const FString& UserEnteredTitle);
+
+	/** Format Issue Tracker / Redmine telemetry description block via CustomJumpHandlerClass. */
+	UFUNCTION(BlueprintPure, Category = "Wcw|SnapJump|IssueTracker")
+	static FString FormatIssueTrackerTelemetryBlock(const FWcwSnapJumpData& SnapData);
+
+	/** Invoke CustomJumpHandlerClass::GatherIssueTrackerPresetSelection for auto-selecting Tracker/Category/Assignee/ParentIssueId. */
+	UFUNCTION(BlueprintCallable, Category = "Wcw|SnapJump|IssueTracker")
+	static void GatherIssueTrackerPresetSelection(const FWcwSnapJumpData& SnapData, FWcwIssueTrackerPresetSelection& OutPresetSelection);
+
+	/** Invoke CustomJumpHandlerClass::GatherIssueTrackerIssueFields to collect Title-specific standard Redmine issue fields. */
+	UFUNCTION(BlueprintCallable, Category = "Wcw|SnapJump|IssueTracker")
+	static void GatherIssueTrackerIssueFields(const FWcwSnapJumpData& SnapData, UPARAM(ref) TMap<FString, FString>& InOutIssueFields);
+
+	/** Invoke CustomJumpHandlerClass::GatherIssueTrackerCustomFields to collect Title-specific Redmine custom fields. */
+	UFUNCTION(BlueprintCallable, Category = "Wcw|SnapJump|IssueTracker")
+	static void GatherIssueTrackerCustomFields(const FWcwSnapJumpData& SnapData, UPARAM(ref) TMap<FString, FString>& InOutCustomFields);
 };

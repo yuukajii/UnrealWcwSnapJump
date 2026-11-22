@@ -15,6 +15,7 @@ public class WcwSnapJumpEditor : ModuleRules
 				"Core",
 				"CoreUObject",
 				"Engine",
+				"DeveloperSettings",
 				"WcwSnapJump"
 			}
 		);
@@ -25,8 +26,10 @@ public class WcwSnapJumpEditor : ModuleRules
 				"Slate",
 				"SlateCore",
 				"InputCore",
+				"ApplicationCore",
 				"UnrealEd",
 				"DeveloperToolSettings",
+				"Settings",
 				"LevelEditor",
 				"WorkspaceMenuStructure",
 				"ToolMenus",
@@ -34,7 +37,10 @@ public class WcwSnapJumpEditor : ModuleRules
 				"DesktopPlatform",
 				"AssetTools",
 				"AssetRegistry",
-				"ImageWrapper"
+				"ImageWrapper",
+				"HTTP",
+				"Json",
+				"JsonUtilities"
 			}
 		);
 	}
