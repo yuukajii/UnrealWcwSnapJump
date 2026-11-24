@@ -531,6 +531,7 @@ void UWcwSnapJumpSubsystem::ApplyPendingPostLoadJump(UWorld* TargetWorld)
 
 	if (UWcwSnapJumpHandler* Handler = GetOrCreateJumpHandler())
 	{
+		Handler->RestoreStreamingLevels(TargetWorld, PendingPostLoadJumpData);
 		Handler->HandleSameLevelTeleport(TargetWorld, PendingPostLoadJumpData);
 		Handler->HandlePostJumpSetup(TargetWorld, PendingPostLoadJumpData);
 	}

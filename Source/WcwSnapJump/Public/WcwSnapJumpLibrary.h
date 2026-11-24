@@ -10,6 +10,7 @@
 
 class UTexture2D;
 class UDataTable;
+class ULevelStreaming;
 
 /**
  * Blueprint & C++ Function Library for capturing, reading, formatting, and jumping with WcwSnapJump.
@@ -38,6 +39,27 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Wcw|SnapJump|Jump", meta = (WorldContext = "WorldContextObject"))
 	static void NotifyWcwLevelLoadCompleted(UObject* WorldContextObject);
+
+	/**
+	 * Strip UEDPIE_%d_ / UEDPIE_ prefixes and optional .ObjectName suffixes to produce a canonical level or package path
+	 * that matches reliably across PIE, non-PIE Editor, and Packaged Console/PC builds.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Wcw|SnapJump|Level")
+	static FString NormalizeLevelPackagePath(const FString& InLevelOrPackagePath);
+
+	/**
+	 * Return true if the package path is a transient or World Partition runtime-generated cell
+	 * (/Memory/..., /Temp/..., /Engine/Transient..., or /_Generated_/...).
+	 */
+	UFUNCTION(BlueprintPure, Category = "Wcw|SnapJump|Level")
+	static bool IsTransientStreamingLevelPackage(const FString& InPackagePath);
+
+	/**
+	 * Return true if the given ULevelStreaming matches TargetLevelOrPackage after normalizing UEDPIE_ prefixes
+	 * on both WorldAsset and PackageNameToLoad.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Wcw|SnapJump|Level")
+	static bool DoesStreamingLevelMatchPackage(const ULevelStreaming* StreamingLevel, const FString& TargetLevelOrPackage);
 
 	/** Read embedded FWcwSnapJumpData directly from a PNG file on disk (without decoding image pixels). */
 	UFUNCTION(BlueprintCallable, Category = "Wcw|SnapJump")

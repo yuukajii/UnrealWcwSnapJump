@@ -7,6 +7,8 @@
 #include "WcwSnapJumpSettings.h"
 #include "WcwSnapJumpRedmineSettings.h"
 #include "Editor.h"
+#include "EditorLevelUtils.h"
+#include "Engine/LevelStreaming.h"
 #include "ISettingsModule.h"
 #include "LevelEditorViewport.h"
 #include "Settings/ProjectPackagingSettings.h"
@@ -2454,6 +2456,52 @@ void SWcwSnapJumpEditorPanel::ExecuteJumpForItem(const TSharedPtr<FWcwSnapJumpEd
 	if (GEditor)
 	{
 		const FWcwSnapJumpData& Snap = Item->SnapData;
+		const UWcwSnapJumpSettings* Settings = GetDefault<UWcwSnapJumpSettings>();
+		if (Settings && Settings->bAutoRestoreStreamingLevels && Settings->bAutoShowStreamingLevelsInEditorJump)
+		{
+			if (UWorld* EditorWorld = GEditor->GetEditorWorldContext().World())
+			{
+				TArray<FString> TargetPackages = Snap.LoadedStreamingLevels;
+				if (!Snap.LevelPackageName.IsEmpty())
+				{
+					TargetPackages.AddUnique(Snap.LevelPackageName);
+				}
+				else if (!Snap.LevelName.IsEmpty())
+				{
+					TargetPackages.AddUnique(Snap.LevelName);
+				}
+
+				TArray<ULevel*> LevelsToShow;
+				TArray<bool> VisibilityFlags;
+				for (ULevelStreaming* StreamingLevel : EditorWorld->GetStreamingLevels())
+				{
+					ULevel* LoadedSubLevel = StreamingLevel ? StreamingLevel->GetLoadedLevel() : nullptr;
+					if (!LoadedSubLevel || LoadedSubLevel->bIsVisible)
+					{
+						continue;
+					}
+					for (const FString& TargetPkg : TargetPackages)
+					{
+						if (UWcwSnapJumpLibrary::DoesStreamingLevelMatchPackage(StreamingLevel, TargetPkg))
+						{
+							LevelsToShow.Add(LoadedSubLevel);
+							VisibilityFlags.Add(true);
+							break;
+						}
+					}
+				}
+
+				if (LevelsToShow.Num() > 0)
+				{
+					UEditorLevelUtils::SetLevelsVisibility(
+						LevelsToShow,
+						VisibilityFlags,
+						true,
+						ELevelVisibilityDirtyMode::DontModify);
+				}
+			}
+		}
+
 		for (FLevelEditorViewportClient* LevelVC : GEditor->GetLevelViewportClients())
 		{
 			if (LevelVC && LevelVC->IsPerspective())

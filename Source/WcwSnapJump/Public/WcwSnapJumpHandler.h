@@ -9,7 +9,7 @@
 #include "WcwSnapJumpHandler.generated.h"
 
 /**
- * Unified Title Customization Handler for WcwSnapJump (Metadata Collection, UI Formatting, Level Loading, Post-Jump Setup & Issue Tracker Overrides).
+ * Unified Title Customization Handler for WcwSnapJump (Metadata Collection, UI Formatting, Level Loading, StreamLevel Restoration, Post-Jump Setup & Issue Tracker Overrides).
  *
  * Inherit from this class in C++ or Blueprint and assign it to:
  *   Project Settings -> Extension -> Wcw Snap Jump -> CustomJumpHandlerClass
@@ -22,9 +22,10 @@
  *   [2] UI Display Formatting (applies to both Runtime Browser & Editor Viewer):
  *       - FormatThumbnailSummary             : Customize the 3-4 line summary shown next to each screenshot thumbnail.
  *       - FormatDetailedReport               : Customize the full detail report shown in the inspector pane.
- *   [3] Level Loading & Jump / Event Playback:
- *       - ShouldTransitionLevel              : Decide whether a map load/reload is needed (e.g. force reload when resetting a cutscene).
+ *   [3] Level Loading, StreamLevel Restoration & Jump / Event Playback:
+ *       - ShouldTransitionLevel              : Decide whether a map load/reload is needed (automatically keeps PersistentLevel alive if target is a registered StreamLevel).
  *       - HandleLevelTransition              : Replace `UGameplayStatics::OpenLevel` with your Title's custom Fade / Async Level Loader / World Partition manager.
+ *       - RestoreStreamingLevels             : Load & make visible recorded StreamLevels (stripping `UEDPIE_`, skipping `/Memory/`, and flushing collision before teleport).
  *       - HandleSameLevelTeleport            : Customize how the Player Character / Camera is teleported.
  *       - HandlePostJumpSetup                : Executed right after teleport OR after level load completes -- restore Event flags, spawn NPCs, or start Cutscene playback here!
  *   [4] Issue Tracker / Redmine Ticket & UI Overrides (v0.2.0+, zero Runtime HTTP/Slate dependency):
@@ -42,7 +43,7 @@ class WCWSNAPJUMP_API UWcwSnapJumpHandler : public UObject
 
 public:
 	/**
-	 * If true (default), UWcwSnapJumpSubsystem automatically triggers HandleSameLevelTeleport & HandlePostJumpSetup
+	 * If true (default), UWcwSnapJumpSubsystem automatically triggers RestoreStreamingLevels, HandleSameLevelTeleport & HandlePostJumpSetup
 	 * as soon as Unreal's `FCoreUObjectDelegates::PostLoadMapWithWorld` fires.
 	 *
 	 * Set this to FALSE if your Title uses a custom multi-stage Async Level Loader (e.g. waiting for Streaming Sublevels,
@@ -57,7 +58,7 @@ public:
 
 	/**
 	 * Master telemetry & metadata gathering entry point called when `Wcw.SnapJump.Shot` is executed.
-	 * Default implementation gathers Level, Player/Camera Transform, calls `GatherStatAndGpuTelemetry`, and calls `OnGatherTitleCustomMeta`.
+	 * Default implementation gathers normalized Level & StreamLevel paths, Player/Camera Transform, calls `GatherStatAndGpuTelemetry`, and calls `OnGatherTitleCustomMeta`.
 	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wcw|SnapJump|Gather")
 	void GatherSnapData(UObject* WorldContextObject, const FString& CaptureTag, FWcwSnapJumpData& OutSnapData);
@@ -98,7 +99,7 @@ public:
 	virtual FString FormatDetailedReport_Implementation(const FWcwSnapJumpData& SnapData);
 
 	// =========================================================================
-	// [3] Level Loading, Teleportation & Post-Jump Event/Cutscene Overrides
+	// [3] Level Loading, StreamLevel Restoration, Teleportation & Post-Jump Overrides
 	// =========================================================================
 
 	/**
@@ -110,7 +111,8 @@ public:
 
 	/**
 	 * Determines whether a level load/transition is required.
-	 * Default returns true when `CurrentLevelName != SnapData.LevelName`.
+	 * Default compares normalized `LevelName` / `LevelPackageName` (stripping `UEDPIE_`), and returns false when the target level
+	 * is already a registered `ULevelStreaming` inside the active `PersistentLevel` (when `bTreatRegisteredStreamLevelAsSameWorld` is enabled).
 	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wcw|SnapJump|Jump")
 	bool ShouldTransitionLevel(UWorld* World, const FWcwSnapJumpData& SnapData);
@@ -118,12 +120,22 @@ public:
 
 	/**
 	 * Called when `ShouldTransitionLevel` returns true.
-	 * Default calls `UGameplayStatics::OpenLevel`.
+	 * Default normalizes `UEDPIE_` prefixes away and calls `UGameplayStatics::OpenLevel`.
 	 * Override this to invoke your Title's custom Level Loader / Fade Manager / Streaming Manager, passing Title-specific parameters from `SnapData`!
 	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wcw|SnapJump|Jump")
 	bool HandleLevelTransition(UWorld* World, const FWcwSnapJumpData& SnapData);
 	virtual bool HandleLevelTransition_Implementation(UWorld* World, const FWcwSnapJumpData& SnapData);
+
+	/**
+	 * Restores (loads & makes visible) streaming sublevels recorded in `SnapData.LoadedStreamingLevels`
+	 * (plus `SnapData.LevelPackageName` if jumping into a registered sublevel of the active PersistentLevel).
+	 * Strips `UEDPIE_` prefixes, skips `/Memory/` & `/_Generated_/` transient cells, and flushes level streaming / physics collision
+	 * before player teleportation when `bAutoRestoreStreamingLevels` and `bBlockOnStreamLevelLoadForJump` are enabled in Project Settings.
+	 */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wcw|SnapJump|Jump")
+	bool RestoreStreamingLevels(UWorld* World, const FWcwSnapJumpData& SnapData);
+	virtual bool RestoreStreamingLevels_Implementation(UWorld* World, const FWcwSnapJumpData& SnapData);
 
 	/**
 	 * Applies Character Location/Rotation and Controller Rotation once in the target level.
@@ -134,7 +146,7 @@ public:
 
 	/**
 	 * Called right after `HandleSameLevelTeleport` (both on immediate same-level jumps AND after a cross-level load finishes!).
-	 * Override this to restore Event Progress flags, load sublevels, spawn enemies, or play a Cutscene (`ULevelSequence`)!
+	 * Override this to restore Event Progress flags, load custom dynamic sublevels, spawn enemies, or play a Cutscene (`ULevelSequence`)!
 	 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Wcw|SnapJump|Jump")
 	void HandlePostJumpSetup(UWorld* World, const FWcwSnapJumpData& SnapData);

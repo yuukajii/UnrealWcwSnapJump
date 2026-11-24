@@ -8,14 +8,18 @@
 #include "WcwSnapJumpHandler.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
+#include "Engine/LevelStreaming.h"
 #include "Engine/Texture2D.h"
 #include "Engine/DataTable.h"
+#include "Engine/World.h"
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
 #include "ImageUtils.h"
 #include "Modules/ModuleManager.h"
 #include "HAL/FileManager.h"
+#include "Misc/Char.h"
 #include "Misc/FileHelper.h"
+#include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "TextureResource.h"
 
@@ -35,6 +39,28 @@ namespace WcwSnapJumpInternal
 			}
 		}
 		return GetMutableDefault<UWcwSnapJumpHandler>(HandlerClass);
+	}
+
+	static FString StripPiePrefixFromLeafSegment(const FString& InSegment)
+	{
+		const FString PiePrefix = TEXT("UEDPIE_");
+		if (!InSegment.StartsWith(PiePrefix, ESearchCase::IgnoreCase))
+		{
+			return InSegment;
+		}
+
+		const int32 Cursor = PiePrefix.Len();
+		int32 DigitEnd = Cursor;
+		while (DigitEnd < InSegment.Len() && FChar::IsDigit(InSegment[DigitEnd]))
+		{
+			++DigitEnd;
+		}
+
+		if (DigitEnd > Cursor && DigitEnd < InSegment.Len() && InSegment[DigitEnd] == TEXT('_'))
+		{
+			return InSegment.Mid(DigitEnd + 1);
+		}
+		return InSegment.Mid(Cursor);
 	}
 }
 
@@ -104,6 +130,105 @@ void UWcwSnapJumpLibrary::NotifyWcwLevelLoadCompleted(UObject* WorldContextObjec
 			}
 		}
 	}
+}
+
+FString UWcwSnapJumpLibrary::NormalizeLevelPackagePath(const FString& InLevelOrPackagePath)
+{
+	FString Result = InLevelOrPackagePath.TrimStartAndEnd();
+	if (Result.IsEmpty() || Result.Equals(TEXT("None"), ESearchCase::IgnoreCase))
+	{
+		return FString();
+	}
+
+	if (Result.StartsWith(TEXT("/")))
+	{
+		Result = FPackageName::ObjectPathToPackageName(Result);
+	}
+	else
+	{
+		int32 DotIndex = INDEX_NONE;
+		if (Result.FindLastChar(TEXT('.'), DotIndex) && DotIndex > 0)
+		{
+			Result = Result.Left(DotIndex);
+		}
+	}
+
+	Result = UWorld::RemovePIEPrefix(Result);
+
+	int32 LastSlash = INDEX_NONE;
+	if (Result.FindLastChar(TEXT('/'), LastSlash))
+	{
+		const FString DirPart = Result.Left(LastSlash + 1);
+		const FString LeafPart = WcwSnapJumpInternal::StripPiePrefixFromLeafSegment(Result.Mid(LastSlash + 1));
+		Result = DirPart + LeafPart;
+	}
+	else
+	{
+		Result = WcwSnapJumpInternal::StripPiePrefixFromLeafSegment(Result);
+	}
+
+	return Result;
+}
+
+bool UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(const FString& InPackagePath)
+{
+	const FString Trimmed = InPackagePath.TrimStartAndEnd();
+	if (Trimmed.IsEmpty() || Trimmed.Equals(TEXT("None"), ESearchCase::IgnoreCase))
+	{
+		return true;
+	}
+
+	if (Trimmed.StartsWith(TEXT("/Memory/"), ESearchCase::IgnoreCase) ||
+		Trimmed.StartsWith(TEXT("/Temp/"), ESearchCase::IgnoreCase) ||
+		Trimmed.StartsWith(TEXT("/Engine/Transient"), ESearchCase::IgnoreCase) ||
+		Trimmed.Contains(TEXT("/_Generated_/"), ESearchCase::IgnoreCase))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool UWcwSnapJumpLibrary::DoesStreamingLevelMatchPackage(const ULevelStreaming* StreamingLevel, const FString& TargetLevelOrPackage)
+{
+	if (!StreamingLevel)
+	{
+		return false;
+	}
+
+	const FString NormTarget = NormalizeLevelPackagePath(TargetLevelOrPackage);
+	if (NormTarget.IsEmpty() || IsTransientStreamingLevelPackage(NormTarget))
+	{
+		return false;
+	}
+
+	const FString NormWorldAsset = NormalizeLevelPackagePath(StreamingLevel->GetWorldAssetPackageName());
+	const FString NormLoadPkg = !StreamingLevel->PackageNameToLoad.IsNone()
+		? NormalizeLevelPackagePath(StreamingLevel->PackageNameToLoad.ToString())
+		: FString();
+
+	if (NormTarget.StartsWith(TEXT("/")))
+	{
+		if (!NormWorldAsset.IsEmpty() && NormWorldAsset.Equals(NormTarget, ESearchCase::IgnoreCase))
+		{
+			return true;
+		}
+		if (!NormLoadPkg.IsEmpty() && NormLoadPkg.Equals(NormTarget, ESearchCase::IgnoreCase))
+		{
+			return true;
+		}
+		return false;
+	}
+
+	if (!NormWorldAsset.IsEmpty() && FPackageName::GetShortName(NormWorldAsset).Equals(NormTarget, ESearchCase::IgnoreCase))
+	{
+		return true;
+	}
+	if (!NormLoadPkg.IsEmpty() && FPackageName::GetShortName(NormLoadPkg).Equals(NormTarget, ESearchCase::IgnoreCase))
+	{
+		return true;
+	}
+	return false;
 }
 
 bool UWcwSnapJumpLibrary::ReadSnapDataFromPngFile(const FString& PngFilePath, FWcwSnapJumpData& OutSnapData)

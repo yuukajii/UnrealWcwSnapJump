@@ -154,6 +154,10 @@ Open the left-half overlay menu in-game via `Wcw.SnapJump.ToggleMenu` or `r.Wcw.
 | `r.Wcw.SnapJump.Resolution` | CVar (`0`) | Overrides max pixel edge for saved PNGs (`0` uses Project Settings). |
 | `r.Wcw.SnapJump.ShowUI` | CVar (`0`) | `1` includes Slate/UMG UI widgets in captured screenshots. |
 | `r.Wcw.SnapJump.Enable` | CVar (`1`) | Master runtime toggle; `0` disables snapshot capture. |
+| `bAutoRestoreStreamingLevels` | Setting (`true`) | Automatically loads & makes visible recorded `StreamLevel`s (stripping `UEDPIE_` and skipping `/Memory/` & `/_Generated_/` cells) before player teleportation. |
+| `bBlockOnStreamLevelLoadForJump` | Setting (`true`) | Synchronously flushes pending `StreamLevel` loading & physics collision (`BlockTillLevelStreamingCompleted`) before teleport to prevent floor-fall. |
+| `bTreatRegisteredStreamLevelAsSameWorld` | Setting (`true`) | Keeps `PersistentLevel` alive and streams in-place when jumping to a registered `StreamLevel` instead of calling `OpenLevel`. |
+| `bExcludeTransientStreamingCells` | Setting (`true`) | Excludes transient World Partition cells (`/Memory/...`, `/_Generated_/...`) when recording `LoadedStreamingLevels`. |
 
 ### Title-Side Override Guide (`UWcwSnapJumpHandler`)
 
@@ -161,7 +165,7 @@ Subclass `UWcwSnapJumpHandler` (in C++ or Blueprint) and assign it under `Projec
 
 * **`OnGatherTitleCustomMeta` / `GatherStatAndGpuTelemetry`**: Append quest/event IDs, cutscene timestamps, or custom title GPU profiler metrics.
 * **`FormatThumbnailSummary` / `FormatDetailedReport`**: Customize row summary and detail pane text across both Editor Viewer and Runtime UI.
-* **`ShouldTransitionLevel` / `HandleLevelTransition` / `HandlePostJumpSetup`**: Route map loads through your custom fade & async stage loader and restore cutscene/event state after jumping.
+* **`ShouldTransitionLevel` / `HandleLevelTransition` / `RestoreStreamingLevels` / `HandlePostJumpSetup`**: Route map loads through your custom fade & async stage loader and restore cutscene/event state after jumping.
 * **`GatherIssueTrackerUiFields` (`v0.2.0+`)**: Declare interactive Title-specific UI controls (**Priority dropdown**, **Text Box**, **Single-Select Dropdown**, **Multi-Select Checkboxes**, or **Boolean CheckBox** for Redmine Custom Fields & Standard Fields) rendered directly inside `Wcw SnapJump Viewer`.
 * **`FormatIssueTrackerSubject` / `FormatIssueTrackerTelemetryBlock` (`v0.2.0+`)**: Customize Redmine ticket Subject naming rules (e.g. `[Platform][Level][Tag]`) and `<pre>` / Markdown telemetry blocks.
 * **`GatherIssueTrackerPresetSelection` / `GatherIssueTrackerIssueFields` / `GatherIssueTrackerCustomFields` (`v0.2.0+`)**: Auto-select Redmine Tracker/Category/Assignee/Parent Issue per snapshot, and inject standard `issue` fields (`priority_id`, `fixed_version_id`) or name-based `custom_fields` (`TMap<FString, FString>`).

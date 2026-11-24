@@ -51,6 +51,13 @@ public:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Capture")
 	bool bWriteJsonSidecar = true;
 
+	/**
+	 * Exclude runtime-generated transient streaming cells (such as World Partition /Memory/UEDPIE_... and /_Generated_/ cells)
+	 * when recording LoadedStreamingLevels so only real sublevel assets (/Game/..., plugin mounts) are stored.
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Capture")
+	bool bExcludeTransientStreamingCells = true;
+
 	/** Number of top GPU passes to record (default: 10) */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Telemetry", meta = (ClampMin = "1", ClampMax = "50"))
 	int32 MaxGpuTopPasses = 10;
@@ -58,6 +65,34 @@ public:
 	/** Optional default DataTable for runtime snapshot gallery (auto-created at /Game/WcwSnapJump/DT_WcwSnapJump if unset) */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "RuntimeJump", meta = (AllowedClasses = "/Script/Engine.DataTable"))
 	FSoftObjectPath DefaultSnapJumpDataTable;
+
+	/**
+	 * Automatically load and make visible recorded StreamLevels (stripping UEDPIE_ prefixes and skipping /Memory/ transient cells)
+	 * before teleporting the player. Turn OFF if your Title's own progression manager exclusively controls sublevel streaming.
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "RuntimeJump")
+	bool bAutoRestoreStreamingLevels = true;
+
+	/**
+	 * Synchronously flush pending StreamLevel loading & physics collision registration (BlockTillLevelStreamingCompleted)
+	 * before teleporting the player, preventing the character from falling through unloaded sublevel floors.
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "RuntimeJump", meta = (EditCondition = "bAutoRestoreStreamingLevels"))
+	bool bBlockOnStreamLevelLoadForJump = true;
+
+	/**
+	 * If a snapshot's primary level matches a registered ULevelStreaming inside the currently active PersistentLevel,
+	 * keep the PersistentLevel alive and stream/show that sublevel in-place instead of calling OpenLevel.
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "RuntimeJump", meta = (EditCondition = "bAutoRestoreStreamingLevels"))
+	bool bTreatRegisteredStreamLevelAsSameWorld = true;
+
+	/**
+	 * When jumping in the non-PIE Editor viewport via Wcw SnapJump Viewer, automatically make matching loaded sublevels
+	 * visible in the Editor viewport (without dirtying map packages).
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "RuntimeJump", meta = (EditCondition = "bAutoRestoreStreamingLevels"))
+	bool bAutoShowStreamingLevelsInEditorJump = true;
 
 	/**
 	 * Pluggable Title Customization & Jump Handler Class.

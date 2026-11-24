@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include "WcwSnapJumpHandler.h"
+#include "WcwSnapJumpLibrary.h"
 #include "WcwSnapJumpModule.h"
 #include "WcwSnapJumpSettings.h"
 #include "WcwSnapJumpSubsystem.h"
@@ -12,14 +13,18 @@
 #include "Engine/LevelStreaming.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "HAL/PlatformMemory.h"
 #include "HAL/PlatformMisc.h"
 #include "HAL/PlatformProperties.h"
 #include "Misc/App.h"
 #include "Misc/DateTime.h"
+#include "Misc/PackageName.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/Package.h"
+#include "UObject/UObjectGlobals.h"
 #include "RenderCore.h"
 #include "RHI.h"
 #include "RHIGlobals.h"
@@ -73,17 +78,41 @@ void UWcwSnapJumpHandler::GatherSnapData_Implementation(UObject* WorldContextObj
 			}
 		}
 
-		OutSnapData.LevelName = UGameplayStatics::GetCurrentLevelName(World, true);
+		OutSnapData.LevelName = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(
+			UGameplayStatics::GetCurrentLevelName(World, true));
 		if (World->PersistentLevel && World->PersistentLevel->GetOutermost())
 		{
-			OutSnapData.LevelPackageName = World->PersistentLevel->GetOutermost()->GetName();
+			OutSnapData.LevelPackageName = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(
+				World->PersistentLevel->GetOutermost()->GetName());
 		}
+
+		const UWcwSnapJumpSettings* Settings = GetDefault<UWcwSnapJumpSettings>();
+		const bool bExcludeTransientCells = !Settings || Settings->bExcludeTransientStreamingCells;
 
 		for (const ULevelStreaming* StreamingLevel : World->GetStreamingLevels())
 		{
-			if (StreamingLevel && StreamingLevel->IsLevelVisible())
+			if (!StreamingLevel || !StreamingLevel->IsLevelVisible())
 			{
-				OutSnapData.LoadedStreamingLevels.Add(StreamingLevel->GetWorldAssetPackageName());
+				continue;
+			}
+
+			FString RawStreamPkg = StreamingLevel->GetWorldAssetPackageName();
+			if (UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(RawStreamPkg) && !StreamingLevel->PackageNameToLoad.IsNone())
+			{
+				const FString FallbackLoadPkg = StreamingLevel->PackageNameToLoad.ToString();
+				if (!UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(FallbackLoadPkg))
+				{
+					RawStreamPkg = FallbackLoadPkg;
+				}
+			}
+
+			const FString NormalizedStreamPkg = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(RawStreamPkg);
+			if (!NormalizedStreamPkg.IsEmpty())
+			{
+				if (!bExcludeTransientCells || !UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(NormalizedStreamPkg))
+				{
+					OutSnapData.LoadedStreamingLevels.AddUnique(NormalizedStreamPkg);
+				}
 			}
 		}
 
@@ -220,8 +249,9 @@ FString UWcwSnapJumpHandler::FormatThumbnailSummary_Implementation(const FWcwSna
 		EnvBadge += TEXT("]");
 	}
 
+	const FString DisplayLevel = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(SnapData.LevelName);
 	TArray<FString> Lines;
-	Lines.Add(FString::Printf(TEXT("[%s] %s%s"), *SnapData.LevelName, *SnapData.CaptureTag, *EnvBadge));
+	Lines.Add(FString::Printf(TEXT("[%s] %s%s"), *DisplayLevel, *SnapData.CaptureTag, *EnvBadge));
 	Lines.Add(FString::Printf(TEXT("Pos: (%.0f, %.0f, %.0f) | %.1f FPS (GPU: %.2fms)"),
 		SnapData.CharacterLocation.X, SnapData.CharacterLocation.Y, SnapData.CharacterLocation.Z,
 		SnapData.Stats.FPS, SnapData.Stats.GpuTimeMs));
@@ -279,9 +309,39 @@ FString UWcwSnapJumpHandler::FormatDetailedReport_Implementation(const FWcwSnapJ
 		}
 	}
 
+	const FString CleanLevelName = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(SnapData.LevelName);
+	const FString CleanLevelPkg = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(SnapData.LevelPackageName);
+
 	Lines.Add(TEXT(""));
 	Lines.Add(TEXT("[Scene & Transform]"));
-	Lines.Add(FString::Printf(TEXT("  Level: %s (%s)"), *SnapData.LevelName, *SnapData.LevelPackageName));
+	Lines.Add(FString::Printf(TEXT("  Level: %s (%s)"), *CleanLevelName, *CleanLevelPkg));
+
+	TArray<FString> AssetSublevels;
+	for (const FString& RawSub : SnapData.LoadedStreamingLevels)
+	{
+		const FString CleanSub = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(RawSub);
+		if (!CleanSub.IsEmpty() && !UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(CleanSub))
+		{
+			AssetSublevels.AddUnique(CleanSub);
+		}
+	}
+	if (AssetSublevels.Num() > 0)
+	{
+		const int32 PreviewCount = FMath::Min(8, AssetSublevels.Num());
+		TArray<FString> PreviewNames;
+		for (int32 i = 0; i < PreviewCount; ++i)
+		{
+			PreviewNames.Add(FPackageName::GetShortName(AssetSublevels[i]));
+		}
+		const FString MoreSuffix = (AssetSublevels.Num() > PreviewCount)
+			? FString::Printf(TEXT(" (+%d more)"), AssetSublevels.Num() - PreviewCount)
+			: TEXT("");
+		Lines.Add(FString::Printf(TEXT("  StreamLevels (%d): %s%s"),
+			AssetSublevels.Num(),
+			*FString::Join(PreviewNames, TEXT(", ")),
+			*MoreSuffix));
+	}
+
 	Lines.Add(FString::Printf(TEXT("  Char Pos: X=%.1f, Y=%.1f, Z=%.1f | Rot: P=%.1f, Y=%.1f, R=%.1f"),
 		SnapData.CharacterLocation.X, SnapData.CharacterLocation.Y, SnapData.CharacterLocation.Z,
 		SnapData.CharacterRotation.Pitch, SnapData.CharacterRotation.Yaw, SnapData.CharacterRotation.Roll));
@@ -352,6 +412,9 @@ bool UWcwSnapJumpHandler::ExecuteJump_Implementation(UObject* WorldContextObject
 		return HandleLevelTransition(World, SnapData);
 	}
 
+	// Restore recorded StreamLevels & flush collision BEFORE player teleportation to prevent falling through unloaded floors
+	RestoreStreamingLevels(World, SnapData);
+
 	bool bSuccess = true;
 	if (bAutoTeleportPlayer)
 	{
@@ -363,12 +426,52 @@ bool UWcwSnapJumpHandler::ExecuteJump_Implementation(UObject* WorldContextObject
 
 bool UWcwSnapJumpHandler::ShouldTransitionLevel_Implementation(UWorld* World, const FWcwSnapJumpData& SnapData)
 {
-	if (!World || SnapData.LevelName.IsEmpty())
+	if (!World || (SnapData.LevelName.IsEmpty() && SnapData.LevelPackageName.IsEmpty()))
 	{
 		return false;
 	}
-	const FString CurrentLevelName = UGameplayStatics::GetCurrentLevelName(World, true);
-	return !CurrentLevelName.Equals(SnapData.LevelName, ESearchCase::IgnoreCase);
+
+	const FString CurrentLevelName = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(
+		UGameplayStatics::GetCurrentLevelName(World, true));
+	const FString TargetLevelName = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(SnapData.LevelName);
+	if (!CurrentLevelName.IsEmpty() && !TargetLevelName.IsEmpty() &&
+		CurrentLevelName.Equals(TargetLevelName, ESearchCase::IgnoreCase))
+	{
+		return false;
+	}
+
+	const FString CurrentPersistentPkg = (World->PersistentLevel && World->PersistentLevel->GetOutermost())
+		? UWcwSnapJumpLibrary::NormalizeLevelPackagePath(World->PersistentLevel->GetOutermost()->GetName())
+		: FString();
+	const FString TargetLevelPkg = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(SnapData.LevelPackageName);
+	if (!CurrentPersistentPkg.IsEmpty() && !TargetLevelPkg.IsEmpty() &&
+		CurrentPersistentPkg.Equals(TargetLevelPkg, ESearchCase::IgnoreCase))
+	{
+		return false;
+	}
+
+	// If the target level is already a registered ULevelStreaming inside the active PersistentLevel,
+	// keep PersistentLevel alive and let RestoreStreamingLevels load & show it in place instead of OpenLevel.
+	const UWcwSnapJumpSettings* Settings = GetDefault<UWcwSnapJumpSettings>();
+	if (Settings && Settings->bAutoRestoreStreamingLevels && Settings->bTreatRegisteredStreamLevelAsSameWorld)
+	{
+		const FString MatchQuery = !TargetLevelPkg.IsEmpty() ? TargetLevelPkg : TargetLevelName;
+		if (!MatchQuery.IsEmpty() && !UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(MatchQuery))
+		{
+			for (const ULevelStreaming* StreamingLevel : World->GetStreamingLevels())
+			{
+				if (UWcwSnapJumpLibrary::DoesStreamingLevelMatchPackage(StreamingLevel, MatchQuery))
+				{
+					UE_LOG(LogWcwSnapJump, Log,
+						TEXT("[DefaultSnapJumpHandler] Target level '%s' matches a registered StreamLevel in active world '%s'; streaming in-place instead of OpenLevel."),
+						*MatchQuery, *CurrentLevelName);
+					return false;
+				}
+			}
+		}
+	}
+
+	return true;
 }
 
 bool UWcwSnapJumpHandler::HandleLevelTransition_Implementation(UWorld* World, const FWcwSnapJumpData& SnapData)
@@ -378,15 +481,152 @@ bool UWcwSnapJumpHandler::HandleLevelTransition_Implementation(UWorld* World, co
 		return false;
 	}
 
-	const FString TargetOpenTarget = !SnapData.LevelPackageName.IsEmpty() ? SnapData.LevelPackageName : SnapData.LevelName;
+	const FString RawOpenTarget = !SnapData.LevelPackageName.IsEmpty() ? SnapData.LevelPackageName : SnapData.LevelName;
+	FString TargetOpenTarget = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(RawOpenTarget);
+	if ((TargetOpenTarget.IsEmpty() || UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(TargetOpenTarget)) &&
+		!SnapData.LevelName.IsEmpty())
+	{
+		TargetOpenTarget = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(SnapData.LevelName);
+	}
+
+	if (TargetOpenTarget.IsEmpty())
+	{
+		return false;
+	}
+
 	const FString Options = FString::Printf(
 		TEXT("WcwJumpX=%.2f?WcwJumpY=%.2f?WcwJumpZ=%.2f?WcwJumpPitch=%.2f?WcwJumpYaw=%.2f?WcwJumpRoll=%.2f"),
 		SnapData.CharacterLocation.X, SnapData.CharacterLocation.Y, SnapData.CharacterLocation.Z,
 		SnapData.CharacterRotation.Pitch, SnapData.CharacterRotation.Yaw, SnapData.CharacterRotation.Roll);
 
-	UE_LOG(LogWcwSnapJump, Log, TEXT("[DefaultSnapJumpHandler] Opening level '%s' with options: %s"), *TargetOpenTarget, *Options);
+	UE_LOG(LogWcwSnapJump, Log, TEXT("[DefaultSnapJumpHandler] Opening normalized level '%s' with options: %s"), *TargetOpenTarget, *Options);
 	UGameplayStatics::OpenLevel(World, FName(*TargetOpenTarget), true, Options);
 	return true;
+}
+
+bool UWcwSnapJumpHandler::RestoreStreamingLevels_Implementation(UWorld* World, const FWcwSnapJumpData& SnapData)
+{
+	if (!World)
+	{
+		return false;
+	}
+
+	const UWcwSnapJumpSettings* Settings = GetDefault<UWcwSnapJumpSettings>();
+	if (!Settings || !Settings->bAutoRestoreStreamingLevels)
+	{
+		return false;
+	}
+
+	const FString CurrentLevelName = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(
+		UGameplayStatics::GetCurrentLevelName(World, true));
+	const FString CurrentPersistentPkg = (World->PersistentLevel && World->PersistentLevel->GetOutermost())
+		? UWcwSnapJumpLibrary::NormalizeLevelPackagePath(World->PersistentLevel->GetOutermost()->GetName())
+		: FString();
+
+	TArray<FString> TargetStreamPackages;
+	for (const FString& RawSublevel : SnapData.LoadedStreamingLevels)
+	{
+		const FString NormSublevel = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(RawSublevel);
+		if (!NormSublevel.IsEmpty() && !UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(NormSublevel))
+		{
+			TargetStreamPackages.AddUnique(NormSublevel);
+		}
+	}
+
+	// If the snapshot's primary level differs from PersistentLevel (e.g. captured directly in a sublevel), ensure it is also streamed in
+	const FString NormPrimaryTarget = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(
+		!SnapData.LevelPackageName.IsEmpty() ? SnapData.LevelPackageName : SnapData.LevelName);
+	if (!NormPrimaryTarget.IsEmpty() && !UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(NormPrimaryTarget))
+	{
+		const bool bMatchesPersistent =
+			(!CurrentPersistentPkg.IsEmpty() && CurrentPersistentPkg.Equals(NormPrimaryTarget, ESearchCase::IgnoreCase)) ||
+			(!CurrentLevelName.IsEmpty() && FPackageName::GetShortName(NormPrimaryTarget).Equals(CurrentLevelName, ESearchCase::IgnoreCase));
+		if (!bMatchesPersistent)
+		{
+			TargetStreamPackages.AddUnique(NormPrimaryTarget);
+		}
+	}
+
+	if (TargetStreamPackages.Num() == 0)
+	{
+		return false;
+	}
+
+	TArray<ULevelStreaming*> TemporarilyBlockedLevels;
+	int32 RestoredCount = 0;
+	bool bNeedsStreamingFlush = false;
+
+	for (ULevelStreaming* StreamingLevel : World->GetStreamingLevels())
+	{
+		if (!StreamingLevel)
+		{
+			continue;
+		}
+
+		bool bMatched = false;
+		for (const FString& TargetPkg : TargetStreamPackages)
+		{
+			if (UWcwSnapJumpLibrary::DoesStreamingLevelMatchPackage(StreamingLevel, TargetPkg))
+			{
+				bMatched = true;
+				break;
+			}
+		}
+
+		if (!bMatched)
+		{
+			continue;
+		}
+
+		const bool bAlreadyReady =
+			StreamingLevel->IsLevelLoaded() &&
+			StreamingLevel->IsLevelVisible() &&
+			StreamingLevel->ShouldBeLoaded() &&
+			StreamingLevel->ShouldBeVisible();
+
+		if (!bAlreadyReady)
+		{
+			if (Settings->bBlockOnStreamLevelLoadForJump && !StreamingLevel->bShouldBlockOnLoad)
+			{
+				TemporarilyBlockedLevels.Add(StreamingLevel);
+				StreamingLevel->bShouldBlockOnLoad = true;
+			}
+
+			StreamingLevel->SetShouldBeLoaded(true);
+			StreamingLevel->SetShouldBeVisible(true);
+			bNeedsStreamingFlush = true;
+			++RestoredCount;
+		}
+	}
+
+	if (bNeedsStreamingFlush)
+	{
+		if (Settings->bBlockOnStreamLevelLoadForJump)
+		{
+			FlushAsyncLoading();
+			World->BlockTillLevelStreamingCompleted();
+			World->FlushLevelStreaming(EFlushLevelStreamingType::Full);
+
+			for (ULevelStreaming* BlockedLevel : TemporarilyBlockedLevels)
+			{
+				if (BlockedLevel)
+				{
+					BlockedLevel->bShouldBlockOnLoad = false;
+				}
+			}
+		}
+		else
+		{
+			World->UpdateLevelStreaming();
+		}
+
+		UE_LOG(LogWcwSnapJump, Log,
+			TEXT("[DefaultSnapJumpHandler] Restored %d StreamLevel(s) (BlockingCollisionFlush=%s) prior to player teleport."),
+			RestoredCount,
+			Settings->bBlockOnStreamLevelLoadForJump ? TEXT("true") : TEXT("false"));
+	}
+
+	return bNeedsStreamingFlush;
 }
 
 bool UWcwSnapJumpHandler::HandleSameLevelTeleport_Implementation(UWorld* World, const FWcwSnapJumpData& SnapData)
@@ -400,6 +640,14 @@ bool UWcwSnapJumpHandler::HandleSameLevelTeleport_Implementation(UWorld* World, 
 	{
 		if (APawn* Pawn = PC->GetPawn())
 		{
+			if (ACharacter* Char = Cast<ACharacter>(Pawn))
+			{
+				if (UCharacterMovementComponent* MoveComp = Char->GetCharacterMovement())
+				{
+					MoveComp->StopMovementImmediately();
+				}
+			}
+
 			Pawn->SetActorLocationAndRotation(
 				SnapData.CharacterLocation,
 				SnapData.CharacterRotation,
@@ -416,7 +664,7 @@ bool UWcwSnapJumpHandler::HandleSameLevelTeleport_Implementation(UWorld* World, 
 
 void UWcwSnapJumpHandler::HandlePostJumpSetup_Implementation(UWorld* World, const FWcwSnapJumpData& SnapData)
 {
-	// Default: no-op. Override in Title subclass to restore Event flags, load sublevels, or play Cutscenes!
+	// Default: no-op. Override in Title subclass to restore Event flags, load custom dynamic sublevels, or play Cutscenes!
 }
 
 void UWcwSnapJumpHandler::GatherIssueTrackerUiFields_Implementation(
@@ -439,17 +687,29 @@ FString UWcwSnapJumpHandler::FormatIssueTrackerSubject_Implementation(const FWcw
 
 FString UWcwSnapJumpHandler::FormatIssueTrackerTelemetryBlock_Implementation(const FWcwSnapJumpData& SnapData)
 {
+	const FString CleanLevelName = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(SnapData.LevelName);
+	const FString CleanLevelPkg = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(SnapData.LevelPackageName);
+
 	TArray<FString> Lines;
 	Lines.Add(TEXT("<pre>"));
 	Lines.Add(TEXT("[WcwSnapJump Telemetry & Scene Summary]"));
 	Lines.Add(FString::Printf(TEXT("Tag: %s | Timestamp: %s"), *SnapData.CaptureTag, *SnapData.Timestamp));
-	Lines.Add(FString::Printf(TEXT("Level: %s (%s)"), *SnapData.LevelName, *SnapData.LevelPackageName));
+	Lines.Add(FString::Printf(TEXT("Level: %s (%s)"), *CleanLevelName, *CleanLevelPkg));
 
-	if (SnapData.LoadedStreamingLevels.Num() > 0)
+	TArray<FString> CleanSublevels;
+	for (const FString& RawSub : SnapData.LoadedStreamingLevels)
+	{
+		const FString NormSub = UWcwSnapJumpLibrary::NormalizeLevelPackagePath(RawSub);
+		if (!NormSub.IsEmpty() && !UWcwSnapJumpLibrary::IsTransientStreamingLevelPackage(NormSub))
+		{
+			CleanSublevels.AddUnique(NormSub);
+		}
+	}
+	if (CleanSublevels.Num() > 0)
 	{
 		Lines.Add(FString::Printf(TEXT("Streaming Sublevels (%d): %s"),
-			SnapData.LoadedStreamingLevels.Num(),
-			*FString::Join(SnapData.LoadedStreamingLevels, TEXT(", "))));
+			CleanSublevels.Num(),
+			*FString::Join(CleanSublevels, TEXT(", "))));
 	}
 
 	Lines.Add(FString::Printf(TEXT("Character Pos: X=%.1f, Y=%.1f, Z=%.1f | Rot: P=%.1f, Y=%.1f, R=%.1f"),
