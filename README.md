@@ -271,6 +271,12 @@ void UMyTitleSnapJumpHandler::GatherIssueTrackerUiFields_Implementation(
 
 * **同梱ZIP (`v0.2.0`)**: [`Samples/WcwSnapJumpCityTest_Plugin.zip`](Samples/WcwSnapJumpCityTest_Plugin.zip)
 
+## Development Note / 開発について
+
+`WcwSnapJump` was developed with the assistance of generative AI, and reviewed/tested manually by the developer. Feel free to open an issue if you find any bugs or have suggestions!
+
+本プラグイン（`WcwSnapJump`）の実装には生成AIを活用しています。コードの動作確認および調整は開発者が行っていますが、不具合や改善点があればIssue等でお知らせください。
+
 ## License / ライセンス
 
 Released under the **MIT License**. Free for commercial and non-commercial use, modification, and redistribution (see [`LICENSE`](LICENSE) for details).
