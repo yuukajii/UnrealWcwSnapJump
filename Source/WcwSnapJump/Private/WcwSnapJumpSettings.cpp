@@ -15,22 +15,31 @@ UWcwSnapJumpSettings::UWcwSnapJumpSettings()
 FString UWcwSnapJumpSettings::GetResolvedScreenshotDirectory()
 {
 	const UWcwSnapJumpSettings* Settings = GetDefault<UWcwSnapJumpSettings>();
-	const FString RelDir = Settings ? Settings->SaveDirectoryRelative : TEXT("WcwSnapJump");
+	const FString RelDir = (Settings && !Settings->SaveDirectoryRelative.IsEmpty())
+		? Settings->SaveDirectoryRelative
+		: TEXT("WcwSnapJump");
 
 #if PLATFORM_DESKTOP || WITH_EDITOR
-	// On Desktop/Editor, full OS path is convenient for Editor tools and Explorer inspection
-	return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / RelDir);
+	const FString FullDir = FPaths::ConvertRelativePathToFull(FPaths::ScreenShotDir() / RelDir);
+	IFileManager::Get().MakeDirectory(*FullDir, true);
+	return FullDir;
 #else
-	// On Console platforms (PS5 / Xbox / Switch), do NOT call ConvertRelativePathToFull!
-	// Console IPlatformFile relies on the virtual "../../../<Project>/Saved/" path to route writes
-	// to Devkit HostFS or the writable Saved partition (just like Saved/Logs and FPaths::ScreenShotDir()).
-	const FString PrimarySavedPath = FPaths::ProjectSavedDir() / RelDir;
-	if (IFileManager::Get().DirectoryExists(*PrimarySavedPath) || IFileManager::Get().MakeDirectory(*PrimarySavedPath, true))
+	IFileManager& FM = IFileManager::Get();
+	FM.MakeDirectory(*FPaths::ScreenShotDir(), false);
+
+	FString TargetDir = FPaths::ScreenShotDir() / RelDir;
+	while (TargetDir.Len() > 1 && (TargetDir.EndsWith(TEXT("/")) || TargetDir.EndsWith(TEXT("\\"))))
 	{
-		return PrimarySavedPath;
+		TargetDir.LeftChopInline(1);
 	}
 
-	// Fallback to writable persistent download/cache storage if ProjectSavedDir is read-only (e.g. detached console run)
-	return FPaths::ProjectPersistentDownloadDir() / RelDir;
+	if (!FM.DirectoryExists(*TargetDir))
+	{
+		if (!FM.MakeDirectory(*TargetDir, false))
+		{
+			FM.MakeDirectory(*TargetDir, true);
+		}
+	}
+	return TargetDir;
 #endif
 }

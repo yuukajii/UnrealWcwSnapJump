@@ -312,22 +312,63 @@ UTexture2D* UWcwSnapJumpLibrary::LoadSnapThumbnailAndData(const FString& PngFile
 TArray<FWcwSnapJumpData> UWcwSnapJumpLibrary::ScanSnapDirectory(const FString& OptionalDirectoryPath)
 {
 	TArray<FWcwSnapJumpData> Results;
+	TSet<FString> SeenFileNamesLower;
+
+	auto ScanSingleDirectory = [&Results, &SeenFileNamesLower](const FString& InDir, const TCHAR* FileWildcard)
+	{
+		if (InDir.IsEmpty())
+		{
+			return;
+		}
+
+		TArray<FString> FoundFiles;
+		IFileManager::Get().FindFiles(FoundFiles, *(InDir / FileWildcard), true, false);
+		for (const FString& FileName : FoundFiles)
+		{
+			const FString LowerKey = FileName.ToLower();
+			if (SeenFileNamesLower.Contains(LowerKey))
+			{
+				continue;
+			}
+
+			const FString FullPath = InDir / FileName;
+			FWcwSnapJumpData SnapData;
+			if (FWcwSnapJumpSerializer::ReadMetaFromFile(FullPath, SnapData))
+			{
+				SeenFileNamesLower.Add(LowerKey);
+				Results.Add(MoveTemp(SnapData));
+			}
+		}
+	};
+
 	const FString TargetDir = OptionalDirectoryPath.IsEmpty()
 		? UWcwSnapJumpSettings::GetResolvedScreenshotDirectory()
 		: OptionalDirectoryPath;
 
-	TArray<FString> FoundFiles;
-	IFileManager::Get().FindFiles(FoundFiles, *(TargetDir / TEXT("*.png")), true, false);
+	ScanSingleDirectory(TargetDir, TEXT("*.png"));
 
-	for (const FString& FileName : FoundFiles)
+#if PLATFORM_DESKTOP || WITH_EDITOR
+	// On Desktop/Editor, scan all Saved/Screenshots/<Platform>/<RelDir> folders (e.g. WindowsEditor, Windows, Console)
+	// plus legacy Saved/<RelDir> for backward compatibility with snapshots captured in v0.2.1 and earlier.
+	if (OptionalDirectoryPath.IsEmpty())
 	{
-		const FString FullPath = TargetDir / FileName;
-		FWcwSnapJumpData SnapData;
-		if (FWcwSnapJumpSerializer::ReadMetaFromFile(FullPath, SnapData))
+		const UWcwSnapJumpSettings* Settings = GetDefault<UWcwSnapJumpSettings>();
+		const FString RelDir = (Settings && !Settings->SaveDirectoryRelative.IsEmpty())
+			? Settings->SaveDirectoryRelative
+			: TEXT("WcwSnapJump");
+
+		const FString ScreenshotsRoot = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Screenshots"));
+		TArray<FString> PlatformSubdirs;
+		IFileManager::Get().FindFiles(PlatformSubdirs, *(ScreenshotsRoot / TEXT("*")), false, true);
+		for (const FString& PlatDir : PlatformSubdirs)
 		{
-			Results.Add(MoveTemp(SnapData));
+			ScanSingleDirectory(ScreenshotsRoot / PlatDir / RelDir, TEXT("*.png"));
 		}
+
+		const FString LegacySavedDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / RelDir);
+		ScanSingleDirectory(LegacySavedDir, TEXT("*.png"));
 	}
+#endif
 
 	Results.Sort([](const FWcwSnapJumpData& A, const FWcwSnapJumpData& B)
 	{

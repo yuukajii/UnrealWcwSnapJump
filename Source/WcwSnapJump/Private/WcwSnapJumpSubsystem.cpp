@@ -9,6 +9,7 @@
 #include "WcwSnapJumpBrowserWidget.h"
 #include "Engine/Engine.h"
 #include "Engine/Console.h"
+#include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
@@ -130,30 +131,139 @@ static TAutoConsoleVariable<float> CVarWcwSnapJumpFontScale(
 	ECVF_Default
 );
 
+namespace WcwSnapJumpConsoleInternal
+{
+	static UWcwSnapJumpSubsystem* ResolveActiveSubsystem(UWorld* InWorld, UObject*& OutEffectiveContext)
+	{
+		OutEffectiveContext = InWorld;
+
+		if (InWorld)
+		{
+			if (UGameInstance* DirectGI = InWorld->GetGameInstance())
+			{
+				if (UWcwSnapJumpSubsystem* DirectSub = DirectGI->GetSubsystem<UWcwSnapJumpSubsystem>())
+				{
+					return DirectSub;
+				}
+			}
+		}
+
+		// When executed from Unreal Editor's bottom Cmd bar (where InWorld may be the Editor world)
+		// or via Device Output Log remote messaging (where InWorld is nullptr), locate the active PIE or Game world.
+		if (GEngine)
+		{
+			for (const FWorldContext& Context : GEngine->GetWorldContexts())
+			{
+				if (Context.WorldType == EWorldType::PIE && Context.OwningGameInstance)
+				{
+					if (UWcwSnapJumpSubsystem* PieSub = Context.OwningGameInstance->GetSubsystem<UWcwSnapJumpSubsystem>())
+					{
+						OutEffectiveContext = Context.World();
+						return PieSub;
+					}
+				}
+			}
+
+			for (const FWorldContext& Context : GEngine->GetWorldContexts())
+			{
+				if (Context.WorldType == EWorldType::Game && Context.OwningGameInstance)
+				{
+					if (UWcwSnapJumpSubsystem* GameSub = Context.OwningGameInstance->GetSubsystem<UWcwSnapJumpSubsystem>())
+					{
+						OutEffectiveContext = Context.World();
+						return GameSub;
+					}
+				}
+			}
+		}
+
+		return nullptr;
+	}
+}
+
+static FAutoConsoleCommandWithWorldAndArgs GCmdWcwSnapJumpShot(
+	TEXT("Wcw.SnapJump.Shot"),
+	TEXT("Captures a custom PNG snapshot with embedded WcwSnapJump metadata. Usage: Wcw.SnapJump.Shot [OptionalTag]"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* InWorld)
+	{
+		UObject* ContextObj = nullptr;
+		UWcwSnapJumpSubsystem* Subsystem = WcwSnapJumpConsoleInternal::ResolveActiveSubsystem(InWorld, ContextObj);
+		if (!Subsystem)
+		{
+			UE_LOG(LogWcwSnapJump, Warning, TEXT("Wcw.SnapJump.Shot requires an active PIE or Game session."));
+			return;
+		}
+
+		const FString Tag = (Args.Num() > 0) ? Args[0] : TEXT("ConsoleSnap");
+		Subsystem->RequestCaptureWithMeta(Tag);
+	})
+);
+
+static FAutoConsoleCommandWithWorldAndArgs GCmdWcwSnapJumpJumpFile(
+	TEXT("Wcw.SnapJump.JumpFile"),
+	TEXT("Reads embedded metadata from the given PNG filename in ScreenShotDir/WcwSnapJump and jumps to it. Usage: Wcw.SnapJump.JumpFile <FileName.png>"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* InWorld)
+	{
+		UObject* ContextObj = nullptr;
+		UWcwSnapJumpSubsystem* Subsystem = WcwSnapJumpConsoleInternal::ResolveActiveSubsystem(InWorld, ContextObj);
+		if (!Subsystem)
+		{
+			UE_LOG(LogWcwSnapJump, Warning, TEXT("Wcw.SnapJump.JumpFile requires an active PIE or Game session."));
+			return;
+		}
+
+		if (Args.Num() == 0)
+		{
+			UE_LOG(LogWcwSnapJump, Warning, TEXT("Usage: Wcw.SnapJump.JumpFile <FileName.png>"));
+			return;
+		}
+
+		FString TargetPath = Args[0];
+		if (FPaths::IsRelative(TargetPath))
+		{
+			TargetPath = UWcwSnapJumpSettings::GetResolvedScreenshotDirectory() / TargetPath;
+		}
+
+		FWcwSnapJumpData SnapData;
+		if (FWcwSnapJumpSerializer::ReadMetaFromFile(TargetPath, SnapData))
+		{
+			Subsystem->JumpToSnapLocation(ContextObj ? ContextObj : Subsystem, SnapData, true, true);
+		}
+		else
+		{
+			UE_LOG(LogWcwSnapJump, Warning, TEXT("Failed to read WcwSnapJump data from '%s'"), *TargetPath);
+		}
+	})
+);
+
+static FAutoConsoleCommandWithWorldAndArgs GCmdWcwSnapJumpToggleMenu(
+	TEXT("Wcw.SnapJump.ToggleMenu"),
+	TEXT("Toggles the runtime WcwSnapJump Browser Menu on/off (Gamepad, Keyboard & Mouse supported)."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* InWorld)
+	{
+		UObject* ContextObj = nullptr;
+		UWcwSnapJumpSubsystem* Subsystem = WcwSnapJumpConsoleInternal::ResolveActiveSubsystem(InWorld, ContextObj);
+		if (!Subsystem)
+		{
+			UE_LOG(LogWcwSnapJump, Warning, TEXT("Wcw.SnapJump.ToggleMenu requires an active PIE or Game session."));
+			return;
+		}
+
+		if (Args.Num() > 0)
+		{
+			const int32 Val = FCString::Atoi(*Args[0]);
+			Subsystem->SetBrowserMenuVisible(Val != 0);
+		}
+		else
+		{
+			Subsystem->ToggleBrowserMenu();
+		}
+	})
+);
+
 void UWcwSnapJumpSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-
-	CmdShot = IConsoleManager::Get().RegisterConsoleCommand(
-		TEXT("Wcw.SnapJump.Shot"),
-		TEXT("Captures a custom PNG snapshot with embedded WcwSnapJump metadata. Usage: Wcw.SnapJump.Shot [OptionalTag]"),
-		FConsoleCommandWithArgsDelegate::CreateUObject(this, &UWcwSnapJumpSubsystem::HandleConsoleShotCommand),
-		ECVF_Default
-	);
-
-	CmdJumpFile = IConsoleManager::Get().RegisterConsoleCommand(
-		TEXT("Wcw.SnapJump.JumpFile"),
-		TEXT("Reads embedded metadata from the given PNG filename in Saved/WcwSnapJump and jumps to it. Usage: Wcw.SnapJump.JumpFile <FileName.png>"),
-		FConsoleCommandWithArgsDelegate::CreateUObject(this, &UWcwSnapJumpSubsystem::HandleConsoleJumpCommand),
-		ECVF_Default
-	);
-
-	CmdToggleMenu = IConsoleManager::Get().RegisterConsoleCommand(
-		TEXT("Wcw.SnapJump.ToggleMenu"),
-		TEXT("Toggles the runtime WcwSnapJump Browser Menu on/off (Gamepad, Keyboard & Mouse supported)."),
-		FConsoleCommandWithArgsDelegate::CreateUObject(this, &UWcwSnapJumpSubsystem::HandleConsoleToggleMenuCommand),
-		ECVF_Default
-	);
 
 	CVarWcwSnapJumpMenu.AsVariable()->SetOnChangedCallback(
 		FConsoleVariableDelegate::CreateUObject(this, &UWcwSnapJumpSubsystem::OnMenuCVarChanged));
@@ -582,7 +692,13 @@ void UWcwSnapJumpSubsystem::OnViewportScreenshotCaptured(int32 InSizeX, int32 In
 	}
 
 	const FString SaveDir = UWcwSnapJumpSettings::GetResolvedScreenshotDirectory();
-	IFileManager::Get().MakeDirectory(*SaveDir, true);
+	if (!IFileManager::Get().DirectoryExists(*SaveDir))
+	{
+		if (!IFileManager::Get().MakeDirectory(*SaveDir, false))
+		{
+			IFileManager::Get().MakeDirectory(*SaveDir, true);
+		}
+	}
 
 	const FString TimestampSlug = FDateTime::Now().ToString(TEXT("%Y%m%d_%H%M%S"));
 	const FString SafeTag = FPaths::MakeValidFileName(PendingCaptureTag);

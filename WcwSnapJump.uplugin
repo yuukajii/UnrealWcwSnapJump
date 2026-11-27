@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 3,
-	"VersionName": "0.2.1",
+	"Version": 4,
+	"VersionName": "0.2.2",
 	"FriendlyName": "Wcw Snap Jump",
 	"Description": "Visual scene snapshot & instant jump debug system with Editor Redmine ticket integration, UEDPIE path normalization, and StreamLevel auto-restoration. Embeds transform, level, stats, GPU load, and custom game/event/cutscene state into lightweight PNG screenshots for QA sharing, Redmine issue creation, Editor inspection, and Runtime/Console jump.",
 	"Category": "Extension",
